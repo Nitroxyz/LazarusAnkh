@@ -202,6 +202,7 @@ end
 
 --string.format("%X", 255) -> FF
 --tonumber("C", 16) -> 12
+--tonumber("Incorrect Seed", 16) -> nil
 
 exports = {
     set_penalty = function(t_penalty)
