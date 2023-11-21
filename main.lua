@@ -79,7 +79,7 @@ set_callback(function()
     for _,v in pairs(items) do
         if v == ENT_TYPE.ITEM_POWERUP_ANKH then
           -- do something
-          tval = true
+          tval = true;
           break
         end
     end
@@ -89,7 +89,7 @@ set_callback(function()
         if Sval then
             state.time_total = state.time_total + Penalty --3600 for 1 min
         else
-            Sval = true
+            Sval = true;
         end
     end
 end, ON.FRAME)
@@ -159,7 +159,7 @@ end)
 register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 2.5 minute penalty\nLook on the fyi page for safe usage', function()
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
     pick_up(players[1].uid, jayjay)
-    state.time_total = state.time_total + 9000 -- = 2.5 minutes in frames
+    state.time_total = state.time_total + 9000; -- = 2.5 minutes in frames
 end)
 
 register_option_bool("d_cutskip", "Cutscene skip", "No mo waitin", true);
@@ -168,20 +168,11 @@ register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minut
 
 register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
 
---[[
-register_option_button("g_unlock_movement", "Unlock Movement", "Press if your movement is stuck", function ()
-    for _,v in pairs(Hold_id_table) do
-        clear_callback(v);
-    end
-    Hold_id_table = {};
-end)
-]]
-
+--[[ stuff
 --register_option_int("g_deaths", "Total Deaths", "", 0, 0, 0)
 
 --register_option_int("customaziation_omg", "Customization", "CUSTOMIZATION", 30, 0, 2147483647);
 
---[[ stuff
 register_option_bool("counter", "count deaths", "enables a visual which shows how many times you died", true)
 
 register_option_bool("a_custom", "custom position", "Be precise", false)
@@ -201,7 +192,6 @@ function format_time(time)
     time = math.floor(time / 60);
     local minutes = time % 60;
     --note: %02d makes 5 -> 05
-    --result = string.format("%02d", minutes) .. ":" .. string.format("%02d", seconds) .. "." .. string.format("%03d", frames);
     result = string.format("%02d:%02d.%03d", minutes, seconds, frames);
     time = math.floor(time / 60);
     if (time > 0) then
