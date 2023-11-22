@@ -229,7 +229,7 @@ function sign_int(i)
 end
 
 function unsign_int(i)
-    return (i+1) % (-INT_MAX*2) + INT_MAX*2 - 1;
+    return (i) % (INT_MAX*2);
 end
 
 --string.format("%X", 255) -> FF
