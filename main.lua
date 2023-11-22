@@ -42,6 +42,8 @@ Prev_SCO = false;
 --Locks input for n frames
 Hold_timer = 0;
 
+INT_MAX = 2147483648;
+
 set_callback(function ()
     Sval = false
     state.time_total = Stime;
@@ -112,7 +114,8 @@ set_callback(function ()
     if(options.a_type)then
         options.ab_seed = tostring(state.seed);
     else
-        options.ab_seed = string.format("%08X", state.seed);
+        local temp = (state.seed+1) % (-INT_MAX*2) + INT_MAX*2 - 1;
+        options.ab_seed = string.format("%08X", temp);
     end
 end, ON.CHARACTER_SELECT)
 
@@ -162,7 +165,8 @@ function ()
         if(tonumber(options.ab_seed, type) == nil)then
             print("Invalid Seed!")
         else
-            state.seed = tonumber(options.ab_seed, type);
+            local temp = tonumber(options.ab_seed, type);
+            state.seed = (temp+INT_MAX) % (INT_MAX*2) - INT_MAX;
             print("Updated seed!");
         end
     else
@@ -218,6 +222,10 @@ end
 --string.format("%X", 255) -> FF
 --tonumber("C", 16) -> 12
 --tonumber("Incorrect Seed", 16) -> nil
+--im even
+--local f = (d+im) % (im*2) - im;
+--back
+--local e = (i+1) % (-im*2)+ im*2 - 1;
 
 exports = {
     set_penalty = function(t_penalty)
