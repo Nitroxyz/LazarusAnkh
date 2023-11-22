@@ -173,7 +173,7 @@ end)
 -- emergency button
 register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 2.5 minute penalty\nLook on the fyi page for safe usage', function()
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
-    pick_up(players[1].uid, jayjay)
+    pick_up(players[1].uid, jayjay);
     state.time_total = state.time_total + 9000; -- = 2.5 minutes in frames
 end)
 
