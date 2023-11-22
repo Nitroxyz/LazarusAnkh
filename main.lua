@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "8.5",
+    version = "8.6",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
@@ -112,10 +112,10 @@ end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 -- exports seed
 set_callback(function ()
     if(options.a_type)then
-        options.ab_seed = tostring(state.seed);
+        options.ab_seed = tostring(sign_int(state.seed));
     else
-        local temp = (state.seed+1) % (-INT_MAX*2) + INT_MAX*2 - 1;
-        options.ab_seed = string.format("%08X", temp);
+        --local temp = unsign_int(state.seed);
+        options.ab_seed = string.format("%08X", state.seed);
     end
 end, ON.CHARACTER_SELECT)
 
@@ -166,7 +166,8 @@ function ()
             print("Invalid Seed!")
         else
             local temp = tonumber(options.ab_seed, type);
-            state.seed = (temp+INT_MAX) % (INT_MAX*2) - INT_MAX;
+            --state.seed = sign_int(temp);
+            state.seed = temp;
             print("Updated seed!");
         end
     else
@@ -187,6 +188,10 @@ register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minut
 
 register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
 
+register_option_button("z", "DDJDJDJ", "", function ()
+    prinspect(state.seed);
+    prinspect(#tostring(state.seed))
+end)
 --[[ stuff
 --register_option_int("g_deaths", "Total Deaths", "", 0, 0, 0)
 
@@ -217,6 +222,14 @@ function format_time(time)
         result = time .. ":" .. result;
     end
     return result;
+end
+
+function sign_int(i)
+    return (i+INT_MAX) % (INT_MAX*2) - INT_MAX;
+end
+
+function unsign_int(i)
+    return (i+1) % (-INT_MAX*2) + INT_MAX*2 - 1;
 end
 
 --string.format("%X", 255) -> FF
