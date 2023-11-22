@@ -110,6 +110,7 @@ end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 -- exports seed
 set_callback(function ()
     options.a_seed = state.seed;
+    print("Imported seed from seed input!");
 end, ON.CHARACTER_SELECT)
 
 -- cutscene skip. huge thanks to Super Ninja Fat/superninjafat for the code!
@@ -117,8 +118,8 @@ set_callback(function ()
     if options.d_cutskip then
         if state.loading == 2 then
             if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
-                state.screen_next = SCREEN.SCORES
-                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY
+                state.screen_next = SCREEN.SCORES;
+                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY;
                 options.f_endtime = format_time(state.time_total);
             end
         end
