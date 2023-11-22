@@ -43,7 +43,7 @@ Prev_SCO = false;
 Hold_timer = 0;
 
 set_callback(function ()
-    Sval = false
+    Sval = false;
     state.time_total = Stime;
 end, ON.START)
 
@@ -87,7 +87,7 @@ set_callback(function()
         -- time penalty
         players[1]:give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
         if Sval then
-            state.time_total = state.time_total + Penalty --3600 for 1 min
+            state.time_total = state.time_total + Penalty; --3600 for 1 min
         else
             Sval = true;
         end
@@ -159,7 +159,7 @@ end)
 -- emergency button
 register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 2.5 minute penalty\nLook on the fyi page for safe usage', function()
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
-    pick_up(players[1].uid, jayjay)
+    pick_up(players[1].uid, jayjay);
     state.time_total = state.time_total + 9000; -- = 2.5 minutes in frames
 end)
 
@@ -207,6 +207,6 @@ end
 
 exports = {
     set_penalty = function(t_penalty)
-        Penalty = t_penalty
+        Penalty = t_penalty;
     end
 }
