@@ -28,7 +28,7 @@ meta = {
 ]]
 
 --Start of the game gives the ankh without penalty. If sval == false, then you get no penalty
-Sval = false
+Sval = false;
 
 --Remember time
 Stime = 0;
@@ -67,7 +67,7 @@ set_callback(function()
             if(state.time_total >= 108000) then
                 load_death_screen();
                 if(state.world * state.level > 1)then
-                    options.f_endtime = state.world .. "-" .. state.level;
+                    options.f_endtime = string.format("%s-%s", state.world, state.level);
                 end
                 print("hadhd");
                 Hold_timer = 120;
