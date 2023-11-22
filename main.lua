@@ -109,7 +109,11 @@ end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 
 -- exports seed
 set_callback(function ()
-    options.a_seed = state.seed;
+    if(options.a_type)then
+        options.ab_seed = tostring(state.seed);
+    else
+        options.ab_seed = string.format("%08X", state.seed);
+    end
 end, ON.CHARACTER_SELECT)
 
 -- cutscene skip. huge thanks to Super Ninja Fat/superninjafat for the code!
@@ -141,15 +145,26 @@ end, ON.WIN)
 
 
 -- Options
+register_option_bool("a_type", "Use old seed type", "", false);
 
-register_option_int("a_seed", "Seed input", "Automatically inserts seed of the run in the character select screen ", 0, 0, 0);
+register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen ", "");
 
 -- imports seed
 register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter an external seed\nThen press the button to update the seed\nMake sure you are in the character select screen before using it", 
 function ()
     if state.screen == SCREEN.CHARACTER_SELECT then
-        state.seed = options.a_seed;
-        print("Updated seed!");
+        local type;
+        if(options.a_type)then
+            type = 10;
+        else
+            type = 16;
+        end
+        if(tonumber(options.ab_seed, type) == nil)then
+            print("Invalid Seed!")
+        else
+            state.seed = tonumber(options.ab_seed, type);
+            print("Updated seed!");
+        end
     else
         print("You need to be in the Character Select screen to update the seed!");
     end
