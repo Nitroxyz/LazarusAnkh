@@ -189,10 +189,6 @@ register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minut
 
 register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
 
-register_option_button("z", "DDJDJDJ", "", function ()
-    prinspect(state.seed);
-    prinspect(#tostring(state.seed))
-end)
 --[[ stuff
 --register_option_int("g_deaths", "Total Deaths", "", 0, 0, 0)
 
