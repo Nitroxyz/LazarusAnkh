@@ -28,7 +28,7 @@ meta = {
 ]]
 
 --Start of the game gives the ankh without penalty. If sval == false, then you get no penalty
-Sval = false
+Sval = false;
 
 --Remember time
 Stime = 0;
@@ -45,7 +45,7 @@ Hold_timer = 0;
 INT_MAX = 2147483648;
 
 set_callback(function ()
-    Sval = false
+    Sval = false;
     state.time_total = Stime;
 end, ON.START)
 
@@ -69,7 +69,7 @@ set_callback(function()
             if(state.time_total >= 108000) then
                 load_death_screen();
                 if(state.world * state.level > 1)then
-                    options.f_endtime = state.world .. "-" .. state.level;
+                    options.f_endtime = string.format("%s-%s", state.world, state.level);
                 end
                 print("hadhd");
                 Hold_timer = 120;
@@ -89,7 +89,7 @@ set_callback(function()
         -- time penalty
         players[1]:give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
         if Sval then
-            state.time_total = state.time_total + Penalty --3600 for 1 min
+            state.time_total = state.time_total + Penalty; --3600 for 1 min
         else
             Sval = true;
         end
@@ -117,6 +117,7 @@ set_callback(function ()
         --local temp = unsign_int(state.seed);
         options.ab_seed = string.format("%08X", state.seed);
     end
+    print("Imported seed from seed input!");
 end, ON.CHARACTER_SELECT)
 
 -- cutscene skip. huge thanks to Super Ninja Fat/superninjafat for the code!
@@ -124,8 +125,8 @@ set_callback(function ()
     if options.d_cutskip then
         if state.loading == 2 then
             if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
-                state.screen_next = SCREEN.SCORES
-                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY
+                state.screen_next = SCREEN.SCORES;
+                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY;
                 options.f_endtime = format_time(state.time_total);
             end
         end
@@ -242,6 +243,6 @@ end
 
 exports = {
     set_penalty = function(t_penalty)
-        Penalty = t_penalty
+        Penalty = t_penalty;
     end
 }
