@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "8.5",
+    version = "8.6",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
@@ -41,6 +41,8 @@ Prev_SCO = false;
 
 --Locks input for n frames
 Hold_timer = 0;
+
+INT_MAX = 2147483648;
 
 set_callback(function ()
     Sval = false;
@@ -109,7 +111,12 @@ end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 
 -- exports seed
 set_callback(function ()
-    options.a_seed = state.seed;
+    if(options.a_type)then
+        options.ab_seed = tostring(sign_int(state.seed));
+    else
+        --local temp = unsign_int(state.seed);
+        options.ab_seed = string.format("%08X", state.seed);
+    end
     print("Imported seed from seed input!");
 end, ON.CHARACTER_SELECT)
 
@@ -142,15 +149,28 @@ end, ON.WIN)
 
 
 -- Options
+register_option_bool("a_type", "Use old seed type", "", false);
 
-register_option_int("a_seed", "Seed input", "Automatically inserts seed of the run in the character select screen ", 0, 0, 0);
+register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen ", "");
 
 -- imports seed
 register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter an external seed\nThen press the button to update the seed\nMake sure you are in the character select screen before using it", 
 function ()
     if state.screen == SCREEN.CHARACTER_SELECT then
-        state.seed = options.a_seed;
-        print("Updated seed!");
+        local type;
+        if(options.a_type)then
+            type = 10;
+        else
+            type = 16;
+        end
+        if(tonumber(options.ab_seed, type) == nil)then
+            print("Invalid Seed!")
+        else
+            local temp = tonumber(options.ab_seed, type);
+            --state.seed = sign_int(temp);
+            state.seed = temp;
+            print("Updated seed!");
+        end
     else
         print("You need to be in the Character Select screen to update the seed!");
     end
@@ -169,6 +189,10 @@ register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minut
 
 register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
 
+register_option_button("z", "DDJDJDJ", "", function ()
+    prinspect(state.seed);
+    prinspect(#tostring(state.seed))
+end)
 --[[ stuff
 --register_option_int("g_deaths", "Total Deaths", "", 0, 0, 0)
 
@@ -201,9 +225,21 @@ function format_time(time)
     return result;
 end
 
+function sign_int(i)
+    return (i+INT_MAX) % (INT_MAX*2) - INT_MAX;
+end
+
+function unsign_int(i)
+    return (i) % (INT_MAX*2);
+end
+
 --string.format("%X", 255) -> FF
 --tonumber("C", 16) -> 12
 --tonumber("Incorrect Seed", 16) -> nil
+--im even
+--local f = (d+im) % (im*2) - im;
+--back
+--local e = (i+1) % (-im*2)+ im*2 - 1;
 
 exports = {
     set_penalty = function(t_penalty)
