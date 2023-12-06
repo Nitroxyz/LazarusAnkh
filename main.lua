@@ -110,6 +110,10 @@ end, ON.FRAME)
 
 -- olmec ankh
 set_post_entity_spawn(function(ent)
+    --[[
+        Could be replaced with:
+        ent:set_post/pre_picked_up(function())
+    ]]
     ent:set_pre_destroy(function()
         --[[if killa == get_player(personalPlayerSlot, true) then
             lowBroke = true
