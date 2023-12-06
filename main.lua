@@ -71,10 +71,10 @@ set_callback(function()
     end
 
         --Short CO finisher
-        if(options.e_short_co)then
+        if options.e_short_co then
             if state.time_total >= MIN * 30 then
                 load_death_screen();
-                if(state.world * state.level > 1)then
+                if state.world * state.level > 1 then
                     -- Todo: Figure out 8-34
                     options.f_endtime = string.format("%s-%s", state.world, state.level);
                 end
@@ -118,7 +118,7 @@ set_post_entity_spawn(function(ent)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 
 -- exports seed
-set_callback(function ()
+set_callback(function()
     if options.a_type then
         options.ab_seed = tostring(sign_int(state.seed));
     else
