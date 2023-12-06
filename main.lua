@@ -1,11 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "8.6",
+    version = "8.7",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 33
+-- 34
 
 --0.00034722222 days penalty
 
@@ -65,6 +65,7 @@ end, ON.RESET)
 set_callback(function()
 
     -- End game bugfix done by peterscp
+    -- What does it meaaan
     if test_flag(state.level_flags, 21) then
         return;
     end
@@ -74,6 +75,7 @@ set_callback(function()
             if(state.time_total >= MIN * 30) then
                 load_death_screen();
                 if(state.world * state.level > 1)then
+                    -- Todo: Figure out 8-34
                     options.f_endtime = string.format("%s-%s", state.world, state.level);
                 end
                 print("hadhd");
