@@ -86,6 +86,10 @@ set_callback(function()
 
     local tval = false; --flag for ankh
     local items = players[1]:get_powerups();
+    --[[
+        Could be replaced with:
+        if players[1]:has_powerup(ENT_TYPE.ITEM_POWERUP_ANKH) then
+    ]]
     for _,v in pairs(items) do
         if v == ENT_TYPE.ITEM_POWERUP_ANKH then
           -- do something
@@ -129,7 +133,7 @@ set_callback(function()
 end, ON.CHARACTER_SELECT)
 
 -- cutscene skip. huge thanks to Super Ninja Fat/superninjafat for the code!
-set_callback(function ()
+set_callback(function()
     if options.d_cutskip then
         if state.loading == 2 then
             if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
@@ -152,6 +156,7 @@ end, ON.PRE_PROCESS_INPUT)
 --[[
 set_callback(function ()
     prinspect(state.time_total);
+    options.f_endtime = format_time(state.time_total);
 end, ON.WIN)
 ]]
 
@@ -174,9 +179,8 @@ function ()
         if tonumber(options.ab_seed, type) == nil then
             print("Invalid Seed!")
         else
-            local temp = tonumber(options.ab_seed, type);
             --state.seed = sign_int(temp);
-            state.seed = temp;
+            state.seed = tonumber(options.ab_seed, type);
             print("Updated seed!");
         end
     else
