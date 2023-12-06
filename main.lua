@@ -72,12 +72,13 @@ set_callback(function()
 
         --Short CO finisher
         if(options.e_short_co)then
-            if(state.time_total >= MIN * 30) then
+            if state.time_total >= MIN * 30 then
                 load_death_screen();
                 if(state.world * state.level > 1)then
                     -- Todo: Figure out 8-34
                     options.f_endtime = string.format("%s-%s", state.world, state.level);
                 end
+                --dont forget to remove on release
                 print("hadhd");
                 Hold_timer = SEC * 2;
             end
@@ -96,7 +97,7 @@ set_callback(function()
         -- time penalty
         players[1]:give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
         if Sval then
-            state.time_total = state.time_total + Penalty; --3600 for 1 min
+            state.time_total = state.time_total + Penalty;
         else
             Sval = true;
         end
@@ -118,7 +119,7 @@ end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 
 -- exports seed
 set_callback(function ()
-    if(options.a_type)then
+    if options.a_type then
         options.ab_seed = tostring(sign_int(state.seed));
     else
         --local temp = unsign_int(state.seed);
@@ -141,7 +142,7 @@ set_callback(function ()
 end, ON.PRE_UPDATE)
 
 set_callback(function ()
-    if(Hold_timer > 0)then
+    if Hold_timer > 0 then
         Hold_timer = Hold_timer - 1;
         return true;
     end
@@ -165,12 +166,12 @@ register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" f
 function ()
     if state.screen == SCREEN.CHARACTER_SELECT then
         local type;
-        if(options.a_type)then
+        if options.a_type then
             type = 10;
         else
             type = 16;
         end
-        if(tonumber(options.ab_seed, type) == nil)then
+        if tonumber(options.ab_seed, type) == nil then
             print("Invalid Seed!")
         else
             local temp = tonumber(options.ab_seed, type);
@@ -222,8 +223,8 @@ function format_time(time)
     --note: %02d makes 5 -> 05
     result = string.format("%02d:%02d.%03d", minutes, seconds, frames);
     time = math.floor(time / 60);
-    if (time > 0) then
-        result = time .. ":" .. result;
+    if time > 0 then
+        result = string.format("%02d:%s", time, result);
     end
     return result;
 end
