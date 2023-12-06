@@ -5,7 +5,7 @@ meta = {
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 34
+-- 35
 
 --0.00034722222 days penalty
 
@@ -41,7 +41,7 @@ Sval = false;
 Stime = 0;
 
 --Penalty
-Penalty = SEC * 30;
+Penalty = 30*SEC;
 
 --checks change in option
 Prev_SCO = false;
@@ -49,7 +49,7 @@ Prev_SCO = false;
 --Locks input for n frames
 Hold_timer = 0;
 
-set_callback(function ()
+set_callback(function()
     Sval = false;
     state.time_total = Stime;
 end, ON.START)
@@ -72,32 +72,32 @@ set_callback(function()
 
         --Short CO finisher
         if options.e_short_co then
-            if state.time_total >= MIN * 30 then
+            if state.time_total >= 30*MIN then
                 load_death_screen();
                 if state.world * state.level > 1 then
                     -- Todo: Figure out 8-34
-                    options.f_endtime = string.format("%s-%s", state.world, state.level);
+                    options.f_endtime = string.format("%d-%d", state.world, state.level);
                 end
                 --dont forget to remove on release
                 print("hadhd");
-                Hold_timer = SEC * 2;
+                Hold_timer = 2*SEC;
             end
         end
 
-    local tval = false;
+    local tval = false; --flag for ankh
     local items = players[1]:get_powerups();
     for _,v in pairs(items) do
         if v == ENT_TYPE.ITEM_POWERUP_ANKH then
           -- do something
           tval = true;
-          break
+          break;
         end
     end
     if tval == false then
         -- time penalty
         players[1]:give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
         if Sval then
-            state.time_total = state.time_total + Penalty;
+            add_time(Penalty);
         else
             Sval = true;
         end
@@ -134,7 +134,7 @@ set_callback(function ()
         if state.loading == 2 then
             if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
                 state.screen_next = SCREEN.SCORES;
-                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY;
+                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY; --not perfect
                 options.f_endtime = format_time(state.time_total);
             end
         end
@@ -162,7 +162,7 @@ register_option_bool("a_type", "Use old seed type", "", false);
 register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen ", "");
 
 -- imports seed
-register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter an external seed\nThen press the button to update the seed\nMake sure you are in the character select screen before using it", 
+register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter an external seed\nThen press the button to update the seed\nMake sure you are in the character select screen before using it",
 function ()
     if state.screen == SCREEN.CHARACTER_SELECT then
         local type;
@@ -188,7 +188,7 @@ end)
 register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 2.5 minute penalty\nLook on the fyi page for safe usage', function()
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
     pick_up(players[1].uid, jayjay);
-    state.time_total = state.time_total + MIN * 2.5; -- = 2.5 minutes in frames
+    add_time(2.5*MIN);
 end)
 
 register_option_bool("d_cutskip", "Cutscene skip", "No mo waitin", true);
@@ -235,6 +235,10 @@ end
 
 function unsign_int(i)
     return (i) % (INT_MAX*2);
+end
+
+function add_time(time)
+    state.time_total = state.time_total + time;
 end
 
 --string.format("%X", 255) -> FF
