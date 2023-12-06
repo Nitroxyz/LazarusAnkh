@@ -12,12 +12,12 @@ meta = {
 --[[ Todo:
     - On start of level give ankh if not having one alr
     - Every time you die:
-        - Add 2-3 minutes on the timer
+        - Add 0.5 minutes on the timer
         - Give another ankh
     - Custom blue ankh sprite
     - If a real ankh is being picked up:
         - Revert the custom sprite
-        - Allow a death without penalty
+        - Allow a death without penalty (done)
     - Add an option to toggle how big the penalty is (maybe)
     - Add a counter for each death
     - Remember backitem and give it back on death
