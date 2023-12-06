@@ -27,6 +27,13 @@ meta = {
     - Death amount
 ]]
 
+--Universal time in frames
+SEC = 60;
+MIN = 3600;
+
+--Integer cap
+INT_MAX = 2147483648;
+
 --Start of the game gives the ankh without penalty. If sval == false, then you get no penalty
 Sval = false;
 
@@ -34,15 +41,13 @@ Sval = false;
 Stime = 0;
 
 --Penalty
-Penalty = 1800;
+Penalty = SEC * 30;
 
 --checks change in option
 Prev_SCO = false;
 
 --Locks input for n frames
 Hold_timer = 0;
-
-INT_MAX = 2147483648;
 
 set_callback(function ()
     Sval = false;
@@ -66,13 +71,13 @@ set_callback(function()
 
         --Short CO finisher
         if(options.e_short_co)then
-            if(state.time_total >= 108000) then
+            if(state.time_total >= MIN * 30) then
                 load_death_screen();
                 if(state.world * state.level > 1)then
                     options.f_endtime = string.format("%s-%s", state.world, state.level);
                 end
                 print("hadhd");
-                Hold_timer = 120;
+                Hold_timer = SEC * 2;
             end
         end
 
@@ -180,7 +185,7 @@ end)
 register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 2.5 minute penalty\nLook on the fyi page for safe usage', function()
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
     pick_up(players[1].uid, jayjay);
-    state.time_total = state.time_total + 9000; -- = 2.5 minutes in frames
+    state.time_total = state.time_total + MIN * 2.5; -- = 2.5 minutes in frames
 end)
 
 register_option_bool("d_cutskip", "Cutscene skip", "No mo waitin", true);
