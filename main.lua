@@ -1,11 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "8.7",
+    version = "9.1",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 35
+-- 39
 
 --0.00034722222 days penalty
 
@@ -55,7 +55,7 @@ set_callback(function()
 end, ON.START)
 
 set_callback(function()
-    if state.pause == 3 then
+    if state.pause | 1 and state.pause | 2 then
         Stime = state.time_total;
     else
         Stime = 0;
@@ -70,6 +70,7 @@ set_callback(function()
         return;
     end
 
+        --[[
         --Short CO finisher
         if options.e_short_co then
             if state.time_total >= 30*MIN then
@@ -83,6 +84,7 @@ set_callback(function()
                 Hold_timer = 2*SEC;
             end
         end
+        ]]
 
     local tval = false; --flag for ankh
     local items = players[1]:get_powerups();
@@ -149,12 +151,14 @@ set_callback(function()
     end
 end, ON.PRE_UPDATE)
 
+--[[
 set_callback(function ()
     if Hold_timer > 0 then
         Hold_timer = Hold_timer - 1;
         return true;
     end
 end, ON.PRE_PROCESS_INPUT)
+]]
 
 -- wintime
 --[[
@@ -193,17 +197,18 @@ function ()
 end)
 
 -- emergency button
-register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 2.5 minute penalty\nLook on the fyi page for safe usage', function()
+register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 3 minute penalty\nLook on the fyi page for safe usage', function()
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
     pick_up(players[1].uid, jayjay);
-    add_time(2.5*MIN);
+    add_time(10800); -- 3 minutes
 end)
 
 register_option_bool("d_cutskip", "Cutscene skip", "No mo waitin", true);
 
-register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
+-- register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
 
-register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
+register_option_string("f_endtime", "Ending time", "", "00:00.000");
+--register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
 
 --[[ stuff
 --register_option_int("g_deaths", "Total Deaths", "", 0, 0, 0)
