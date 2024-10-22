@@ -1,23 +1,19 @@
+---@diagnostic disable: lowercase-global
 meta = {
     name = "Lazarus Ankh",
-    version = "9.1",
+    version = "9.4",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 39
+-- 43
 
 --0.00034722222 days penalty
 
 --[[ Todo:
-    - On start of level give ankh if not having one alr
-    - Every time you die:
-        - Add 0.5 minutes on the timer
-        - Give another ankh
     - Custom blue ankh sprite
     - If a real ankh is being picked up:
         - Revert the custom sprite
-        - Allow a death without penalty (done)
     - Add an option to toggle how big the penalty is (maybe)
     - Add a counter for each death
     - Remember backitem and give it back on death
@@ -49,11 +45,13 @@ Prev_SCO = false;
 --Locks input for n frames
 Hold_timer = 0;
 
+-- instant restart protection part 2
 set_callback(function()
     Sval = false;
     state.time_total = Stime;
 end, ON.START)
 
+-- instant restart protection part 1
 set_callback(function()
     if state.pause | 1 and state.pause | 2 then
         Stime = state.time_total;
@@ -62,8 +60,21 @@ set_callback(function()
     end
 end, ON.RESET)
 
+--[[
+Mainframe
+Handles:
+- Short CO finisher
+- Giving the ankh
+]]
 set_callback(function()
 
+        -- faster ankh
+    if options.da_ankhskip then
+        modify_ankh_health_gain(4, 4)
+    else
+        modify_ankh_health_gain(4, 1)
+    end
+    
     -- End game bugfix done by peterscp
     -- What does it meaaan
     if test_flag(state.level_flags, 21) then
@@ -127,6 +138,8 @@ set_post_entity_spawn(function(ent)
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 
+
+
 -- exports seed
 set_callback(function()
     if options.a_type then
@@ -135,9 +148,10 @@ set_callback(function()
         --local temp = unsign_int(state.seed);
         options.ab_seed = string.format("%08X", state.seed);
     end
-    print("Imported seed from seed input!");
+    print("Imported seed to seed input!");
 end, ON.CHARACTER_SELECT)
 
+-- Might be able to rewrite it to instead check for the win first, then the skip option, so you can save the end time regardless.
 -- cutscene skip. huge thanks to Super Ninja Fat/superninjafat for the code!
 set_callback(function()
     if options.d_cutskip then
@@ -172,7 +186,7 @@ end, ON.WIN)
 -- Options
 register_option_bool("a_type", "Use old seed type", "", false);
 
-register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen ", "");
+register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen", "");
 
 -- imports seed
 register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter an external seed\nThen press the button to update the seed\nMake sure you are in the character select screen before using it",
@@ -196,14 +210,33 @@ function ()
     end
 end)
 
+
 -- emergency button
-register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 3 minute penalty\nLook on the fyi page for safe usage', function()
+register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 3 minute penalty', function()
+    -- test if you are in tiamat
+    if options.ca_emergency_lock then
+        if state.theme ~= THEME.TIAMAT then
+            print("You need to be in tiamat to use the emergency button!");
+            return
+        end
+    end
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
     pick_up(players[1].uid, jayjay);
-    add_time(10800); -- 3 minutes
+    add_time(3*MIN); -- 3 minutes
+
+    -- Add ropes
+    if options.cb_bonus_rope then
+        players[1].inventory.ropes = players[1].inventory.ropes + 1;
+    end
 end)
 
-register_option_bool("d_cutskip", "Cutscene skip", "No mo waitin", true);
+register_option_bool("ca_emergency_lock", "Disable emergency button lock", "", true);
+
+register_option_bool("cb_bonus_rope", "Bonus rope", "Gives you one rope when using the emergency button", true)
+
+register_option_bool("d_cutskip", "Cutscene skip", "", true);
+
+register_option_bool("da_ankhskip", "Shorter Ankh animation", "", false);
 
 -- register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
 
