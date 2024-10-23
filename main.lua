@@ -1,12 +1,12 @@
 ---@diagnostic disable: lowercase-global
 meta = {
     name = "Lazarus Ankh",
-    version = "9.4",
+    version = "9.6",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 43
+-- 46
 
 --0.00034722222 days penalty
 
@@ -49,14 +49,40 @@ Hold_timer = 0;
 set_callback(function()
     Sval = false;
     state.time_total = Stime;
+    -- Stime = 0;
 end, ON.START)
 
 -- instant restart protection part 1
 set_callback(function()
-    if state.pause | 1 and state.pause | 2 then
+    if state.pause & 1 == 1 and state.pause & 2 == 2 then
         Stime = state.time_total;
     else
         Stime = 0;
+    end
+
+    if state.screen == SCREEN.CHARACTER_SELECT then
+        local type;
+        if options.a_type then
+            type = 10;
+        else
+            type = 16;
+        end
+        if tonumber(options.ab_seed, type) == nil then
+            print("Invalid Seed!")
+        else
+            --state.seed = sign_int(temp);
+            state.seed = tonumber(options.ab_seed, type);
+            print("Updated seed!");
+        end
+    else
+
+        -- print("You need to be in the Character Select screen to update the seed!");
+        if state.screen == SCREEN.SEED_INPUT or state.screen == SCREEN.CAMP then
+            print("THIS DOESN'T WORK");
+            print("THIS DOESN'T WORK");
+            print("THIS DOESN'T WORK");
+            error("THIS DOESN'T WORK!!!");
+        end
     end
 end, ON.RESET)
 
@@ -75,7 +101,7 @@ set_callback(function()
         modify_ankh_health_gain(4, 1)
     end
     
-    -- End game bugfix done by peterscp
+    -- "End game" bugfix done by peterscp
     -- What does it meaaan
     if test_flag(state.level_flags, 21) then
         return;
@@ -186,8 +212,9 @@ end, ON.WIN)
 -- Options
 register_option_bool("a_type", "Use old seed type", "", false);
 
-register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen", "");
+register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen.\nAlso automatically inserts the seed at the start of the run", "");
 
+--[[
 -- imports seed
 register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter an external seed\nThen press the button to update the seed\nMake sure you are in the character select screen before using it",
 function ()
@@ -209,6 +236,7 @@ function ()
         print("You need to be in the Character Select screen to update the seed!");
     end
 end)
+]]
 
 
 -- emergency button
@@ -244,7 +272,7 @@ register_option_string("f_endtime", "Ending time", "", "00:00.000");
 --register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
 
 --[[ stuff
---register_option_int("g_deaths", "Total Deaths", "", 0, 0, 0)
+register_option_int("g_deaths", "Total Deaths", "", 0, 0, 0)
 
 --register_option_int("customaziation_omg", "Customization", "CUSTOMIZATION", 30, 0, 2147483647);
 
