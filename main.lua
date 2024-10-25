@@ -1,12 +1,11 @@
----@diagnostic disable: lowercase-global
 meta = {
     name = "Lazarus Ankh",
-    version = "9.6",
+    version = "9.10",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 46
+-- 52
 
 --0.00034722222 days penalty
 
@@ -24,6 +23,7 @@ meta = {
 ]]
 
 --Universal time in frames
+
 SEC = 60;
 MIN = 3600;
 
@@ -31,33 +31,71 @@ MIN = 3600;
 INT_MAX = 2147483648;
 
 --Start of the game gives the ankh without penalty. If sval == false, then you get no penalty
-Sval = false;
+local sval = false;
 
 --Remember time
-Stime = 0;
+local stime = 0;
 
 --Penalty
-Penalty = 30*SEC;
+local penalty = 30*SEC;
 
---checks change in option
-Prev_SCO = false;
+-- Emergency button Penalty
+local eb_penalty = 3*MIN;
 
 --Locks input for n frames
-Hold_timer = 0;
+local hold_timer = 0;
+
+--Used to determine the phase of the ankh for skipping the ankh cutscene
+local flag = 0;
+
+
+
+-- Idea from PeterSCP
+local function format_time(time)
+    local result;
+    local frames = time % 60;
+    time = math.floor(time / 60);
+    local frametime = 1000 / 60;
+    frames = math.floor(frametime * frames);
+    local seconds = time % 60;
+    time = math.floor(time / 60);
+    local minutes = time % 60;
+    --note: %02d makes 5 -> 05
+    result = string.format("%02d:%02d.%03d", minutes, seconds, frames);
+    time = math.floor(time / 60);
+    if time > 0 then
+        result = string.format("%02d:%s", time, result);
+    end
+    return result;
+end
+
+local function sign_int(i)
+    return (i+INT_MAX) % (INT_MAX*2) - INT_MAX;
+end
+
+local function unsign_int(i)
+    return (i) % (INT_MAX*2);
+end
+
+local function add_time(time)
+    state.time_total = state.time_total + time;
+end
+
+
 
 -- instant restart protection part 2
 set_callback(function()
-    Sval = false;
-    state.time_total = Stime;
-    -- Stime = 0;
+    sval = false;
+    state.time_total = stime;
 end, ON.START)
 
 -- instant restart protection part 1
+-- Now includes the automatic seed insertion
 set_callback(function()
     if state.pause & 1 == 1 and state.pause & 2 == 2 then
-        Stime = state.time_total;
+        stime = state.time_total;
     else
-        Stime = 0;
+        stime = 0;
     end
 
     if state.screen == SCREEN.CHARACTER_SELECT then
@@ -68,6 +106,7 @@ set_callback(function()
             type = 16;
         end
         if tonumber(options.ab_seed, type) == nil then
+            error("Invalid Seed!")
             print("Invalid Seed!")
         else
             --state.seed = sign_int(temp);
@@ -79,30 +118,26 @@ set_callback(function()
         -- print("You need to be in the Character Select screen to update the seed!");
         if state.screen == SCREEN.SEED_INPUT or state.screen == SCREEN.CAMP then
             print("THIS DOESN'T WORK");
-            print("THIS DOESN'T WORK");
-            print("THIS DOESN'T WORK");
             error("THIS DOESN'T WORK!!!");
         end
     end
 end, ON.RESET)
 
---[[
-Mainframe
-Handles:
-- Short CO finisher
-- Giving the ankh
-]]
+
+-- Short CO finisher (Unused atm)
+-- Giving the ankh
+-- Ankh health gain
 set_callback(function()
 
-        -- faster ankh
-    if options.da_ankhskip then
+    -- faster ankh
+    if options.e_ankhskip then
         modify_ankh_health_gain(4, 4)
     else
         modify_ankh_health_gain(4, 1)
     end
     
     -- "End game" bugfix done by peterscp
-    -- What does it meaaan
+    -- Also fixes duat
     if test_flag(state.level_flags, 21) then
         return;
     end
@@ -118,53 +153,35 @@ set_callback(function()
                 end
                 --dont forget to remove on release
                 print("hadhd");
-                Hold_timer = 2*SEC;
+                hold_timer = 2*SEC;
             end
         end
         ]]
 
-    local tval = false; --flag for ankh
-    local items = players[1]:get_powerups();
-    --[[
-        Could be replaced with:
-        if players[1]:has_powerup(ENT_TYPE.ITEM_POWERUP_ANKH) then
-    ]]
-    for _,v in pairs(items) do
-        if v == ENT_TYPE.ITEM_POWERUP_ANKH then
-          -- do something
-          tval = true;
-          break;
-        end
-    end
+    local tval = players[1]:has_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
     if tval == false then
         -- time penalty
         players[1]:give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
-        if Sval then
-            add_time(Penalty);
+        if sval then
+            add_time(penalty);
         else
-            Sval = true;
+            sval = true;
         end
     end
 end, ON.FRAME)
 
 -- olmec ankh
 set_post_entity_spawn(function(ent)
-    --[[
-        Could be replaced with:
-        ent:set_post/pre_picked_up(function())
-    ]]
-    ent:set_pre_destroy(function()
+    ent:set_pre_picked_up(function()
         --[[if killa == get_player(personalPlayerSlot, true) then
             lowBroke = true
             coBroke = true
         end
         ]]
-        Sval = false;
+        sval = false;
         return false;
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
-
-
 
 -- exports seed
 set_callback(function()
@@ -189,12 +206,53 @@ set_callback(function()
             end
         end
     end
-end, ON.PRE_UPDATE)
+
+    -- Main part of ankh skip
+    if options.e_ankhskip then
+        local ankhs = get_entities_by_type(ENT_TYPE.ITEM_POWERUP_ANKH);
+        for i, v in pairs(ankhs) do
+            local ankh = get_entity(v);
+
+            -- This should be able to replace the previous flag stuff
+            if ankh.timer1 == 0 then
+                flag = 0;
+            end
+            if ankh.timer1 == 1 then
+                flag = 1;
+                print("Do")
+            end
+
+            --[[
+            if options.ea_cool_ankh then
+                rear = 0;
+            end
+            ]]
+            -- ankh.x = 0;
+            -- ankh.y = 0;
+            if flag == 1 then
+                if ankh.timer2 > 1 then
+                    -- You need to put it to any number above 100
+                    ankh.timer2 = 120;
+                    flag = flag + 1;
+                    print("Re")
+                end
+            elseif flag == 2 then
+                -- You need to put it to any number below 120, 119 being optimal
+                if 20 < ankh.timer2 and ankh.timer2 < 120 then
+                    ankh.timer2 = 119;
+                    flag = flag + 1;
+                    print("Mi")
+                    -- no more extra flags, it just prevents more stages
+                end
+            end
+        end
+    end
+end, ON.POST_UPDATE)
 
 --[[
 set_callback(function ()
-    if Hold_timer > 0 then
-        Hold_timer = Hold_timer - 1;
+    if hold_timer > 0 then
+        hold_timer = hold_timer - 1;
         return true;
     end
 end, ON.PRE_PROCESS_INPUT)
@@ -214,7 +272,6 @@ register_option_bool("a_type", "Use old seed type", "", false);
 
 register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen.\nAlso automatically inserts the seed at the start of the run", "");
 
---[[
 -- imports seed
 register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter an external seed\nThen press the button to update the seed\nMake sure you are in the character select screen before using it",
 function ()
@@ -233,24 +290,24 @@ function ()
             print("Updated seed!");
         end
     else
+        error();
         print("You need to be in the Character Select screen to update the seed!");
     end
 end)
-]]
-
 
 -- emergency button
 register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 3 minute penalty', function()
     -- test if you are in tiamat
     if options.ca_emergency_lock then
         if state.theme ~= THEME.TIAMAT then
+            error()
             print("You need to be in tiamat to use the emergency button!");
             return
         end
     end
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
     pick_up(players[1].uid, jayjay);
-    add_time(3*MIN); -- 3 minutes
+    add_time(eb_penalty); -- 3 minutes
 
     -- Add ropes
     if options.cb_bonus_rope then
@@ -260,11 +317,13 @@ end)
 
 register_option_bool("ca_emergency_lock", "Disable emergency button lock", "", true);
 
-register_option_bool("cb_bonus_rope", "Bonus rope", "Gives you one rope when using the emergency button", true)
+register_option_bool("cb_bonus_rope", "Bonus rope", "Gives you one rope when using the emergency button. Should be off during low%", true)
 
 register_option_bool("d_cutskip", "Cutscene skip", "", true);
 
-register_option_bool("da_ankhskip", "Shorter Ankh animation", "", false);
+register_option_bool("e_ankhskip", "Shorter Ankh animation", "", false);
+
+--register_option_bool("ea_cool_ankh", "Cool ankh animation", "It do be looking cool tho (Needs shorter ankh animation)", false);
 
 -- register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
 
@@ -284,37 +343,6 @@ register_option_float("top", "top", "", 0.910, -1, 1)
 register_option_float("big", "big", "", 0.05, 0, 2)
 ]]
 
--- Idea from PeterSCP
-function format_time(time)
-    local result;
-    local frames = time % 60;
-    time = math.floor(time / 60);
-    local frametime = 1000 / 60;
-    frames = math.floor(frametime * frames);
-    local seconds = time % 60;
-    time = math.floor(time / 60);
-    local minutes = time % 60;
-    --note: %02d makes 5 -> 05
-    result = string.format("%02d:%02d.%03d", minutes, seconds, frames);
-    time = math.floor(time / 60);
-    if time > 0 then
-        result = string.format("%02d:%s", time, result);
-    end
-    return result;
-end
-
-function sign_int(i)
-    return (i+INT_MAX) % (INT_MAX*2) - INT_MAX;
-end
-
-function unsign_int(i)
-    return (i) % (INT_MAX*2);
-end
-
-function add_time(time)
-    state.time_total = state.time_total + time;
-end
-
 --string.format("%X", 255) -> FF
 --tonumber("C", 16) -> 12
 --tonumber("Incorrect Seed", 16) -> nil
@@ -325,6 +353,6 @@ end
 
 exports = {
     set_penalty = function(t_penalty)
-        Penalty = t_penalty;
+        penalty = t_penalty;
     end
 }
