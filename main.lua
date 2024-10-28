@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "9.10",
+    version = "10.0",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
@@ -46,8 +46,7 @@ local eb_penalty = 3*MIN;
 local hold_timer = 0;
 
 --Used to determine the phase of the ankh for skipping the ankh cutscene
-local flag = 0;
-
+local ankh_flag = 0;
 
 
 -- Idea from PeterSCP
@@ -95,7 +94,7 @@ set_callback(function()
     if state.pause & 1 == 1 and state.pause & 2 == 2 then
         stime = state.time_total;
     else
-        stime = 0;
+        stime = 1;
     end
 
     if state.screen == SCREEN.CHARACTER_SELECT then
@@ -158,10 +157,10 @@ set_callback(function()
         end
         ]]
 
-    local tval = players[1]:has_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
+    local tval = get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
     if tval == false then
         -- time penalty
-        players[1]:give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
+        get_player(1, false):give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
         if sval then
             add_time(penalty);
         else
@@ -211,15 +210,17 @@ set_callback(function()
     if options.e_ankhskip then
         local ankhs = get_entities_by_type(ENT_TYPE.ITEM_POWERUP_ANKH);
         for i, v in pairs(ankhs) do
-            local ankh = get_entity(v);
+            local ankh = get_entity(v); --[[@as AnkhPowerup]]
 
             -- This should be able to replace the previous flag stuff
             if ankh.timer1 == 0 then
-                flag = 0;
-            end
-            if ankh.timer1 == 1 then
-                flag = 1;
-                print("Do")
+                ankh_flag = 0;
+            elseif ankh.timer1 == 1 then
+                ankh_flag = 1;
+                --print("Do")
+            -- Manual lockout to prevent the ankhskip from softlocking
+    	    elseif ankh.timer1 > 677 then
+                return
             end
 
             --[[
@@ -227,21 +228,21 @@ set_callback(function()
                 rear = 0;
             end
             ]]
-            -- ankh.x = 0;
-            -- ankh.y = 0;
-            if flag == 1 then
+            --ankh.x = 0;
+            --ankh.y = 0;
+            if ankh_flag == 1 then
                 if ankh.timer2 > 1 then
                     -- You need to put it to any number above 100
                     ankh.timer2 = 120;
-                    flag = flag + 1;
-                    print("Re")
+                    ankh_flag = ankh_flag + 1;
+                    --print("Re")
                 end
-            elseif flag == 2 then
-                -- You need to put it to any number below 120, 119 being optimal
+            elseif ankh_flag == 2 then
+                -- You ne^^^^ed to put it to any number below 120, 119 being optimal
                 if 20 < ankh.timer2 and ankh.timer2 < 120 then
                     ankh.timer2 = 119;
-                    flag = flag + 1;
-                    print("Mi")
+                    ankh_flag = ankh_flag + 1;
+                    --print("Mi")
                     -- no more extra flags, it just prevents more stages
                 end
             end
@@ -306,22 +307,22 @@ register_option_button('c_Ej', 'Emergency button', 'Gives a jetpack for a 3 minu
         end
     end
     local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
-    pick_up(players[1].uid, jayjay);
+    pick_up(get_player(1, false).uid, jayjay);
     add_time(eb_penalty); -- 3 minutes
 
     -- Add ropes
     if options.cb_bonus_rope then
-        players[1].inventory.ropes = players[1].inventory.ropes + 1;
+        get_player(1, false).inventory.ropes = get_player(1, false).inventory.ropes + 1;
     end
 end)
 
 register_option_bool("ca_emergency_lock", "Disable emergency button lock", "", true);
 
-register_option_bool("cb_bonus_rope", "Bonus rope", "Gives you one rope when using the emergency button. Should be off during low%", true)
+register_option_bool("cb_bonus_rope", "Bonus rope", "Gives you one rope when using the emergency button. This should be off during low%", false)
 
 register_option_bool("d_cutskip", "Cutscene skip", "", true);
 
-register_option_bool("e_ankhskip", "Shorter Ankh animation", "", false);
+register_option_bool("e_ankhskip", "Shorter Ankh animation", "", true);
 
 --register_option_bool("ea_cool_ankh", "Cool ankh animation", "It do be looking cool tho (Needs shorter ankh animation)", false);
 
