@@ -1,11 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "10.5",
+    version = "10.10",
     author = "Nitroxy",
-    description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
+    description = "On death revive and gain 0.5 minutes on your time\n\nOptions:\n"
 }
 
--- 56
+-- 58
 
 --0.00034722222 days penalty
 
@@ -39,9 +39,6 @@ local stime = 0;
 --Penalty
 local penalty = 30*SEC;
 
--- Emergency button Penalty
-local eb_penalty = 3*MIN;
-
 --Locks input for n frames
 --local hold_timer = 0;
 
@@ -71,7 +68,7 @@ end
 -- Set the ushabti to a random one
 local function schrodingers_ushabti()
     local random_pick = math.random(0, 99)
-    local result = tonumber(random_pick, 12)
+    local result = tonumber(tostring(random_pick), 12)
     state:set_correct_ushabti(result)
 end
 
@@ -105,9 +102,8 @@ set_callback(function()
             print("Invalid Seed!")
             error("Invalid Seed!")
         else
-            --state.seed = sign_int(temp);
             state.seed = tonumber(options.ab_seed, type);
-            print("Updated seed!");
+            print("Auto-Updated seed!");
         end
     else
         if state.screen == SCREEN.SEED_INPUT or state.screen == SCREEN.CAMP then
@@ -118,13 +114,14 @@ set_callback(function()
 end, ON.RESET)
 
 
--- Short CO finisher (Unused atm)
+-- Short CO finisher
 -- Giving the ankh
 -- Ankh health gain
+-- Penalty time when dying
 set_callback(function()
 
     -- faster ankh
-    if options.e_ankhskip then
+    if options.da_ankhskip then
         modify_ankh_health_gain(4, 4)
     else
         modify_ankh_health_gain(4, 1)
@@ -136,22 +133,25 @@ set_callback(function()
         return;
     end
 
-        --[[
+
         --Short CO finisher
         if options.e_short_co then
             if state.time_total >= 30*MIN then
                 load_death_screen();
                 if state.world * state.level > 1 then
-                    -- Todo: Figure out 8-34
-                    options.f_endtime = string.format("%d-%d", state.world, state.level);
+                    if state.world == 8 then
+                        options.f_endtime = string.format("7-%d", state.level);
+                    else
+                        options.f_endtime = string.format("%d-%d", state.world, state.level);
+                    end
                 end
                 --dont forget to remove on release
-                print("hadhd");
-                hold_timer = 2*SEC;
+                --print("hadhd");
+                --hold_timer = 2*SEC;
             end
         end
-        ]]
 
+    -- infinite ankh handling
     local has_ankh = get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
     if has_ankh == false then
         -- time penalty
@@ -169,7 +169,7 @@ set_post_entity_spawn(function(ent)
     ent = ent --[[@as Powerup]]
     ent:set_pre_picked_up(function()
         sval = false;
-        add_time(-10*SEC)
+        add_time(-10*SEC);
         return false;
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
@@ -177,7 +177,7 @@ end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 -- exports seed
 set_callback(function()
     options.ab_seed = string.format("%08X", state.seed);
-    print("Imported seed to seed input!");
+    print("Auto-Imported seed");
 end, ON.CHARACTER_SELECT)
 
 -- Might be able to rewrite it to instead check for the win first, then the skip option, so you can save the end time regardless.
@@ -187,14 +187,14 @@ set_callback(function()
         if state.loading == 2 then
             if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
                 state.screen_next = SCREEN.SCORES;
-                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY; --not perfect
+                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY; --not perfect >:(
                 options.f_endtime = format_time(state.time_total);
             end
         end
     end
 
     -- Main part of ankh skip
-    if options.e_ankhskip then
+    if options.da_ankhskip then
         local ankhs = get_entities_by_type(ENT_TYPE.ITEM_POWERUP_ANKH);
         for i, v in pairs(ankhs) do
             local ankh = get_entity(v) --[[@as AnkhPowerup]]
@@ -232,7 +232,13 @@ set_callback(function()
     end
 end, ON.POST_UPDATE)
 
---[[
+-- FEEDC0DE
+set_callback(function ()
+    -- Because you are in adventure mode!
+    options.ab_seed = "FEEDC0DE"
+end, ON.CAMP)
+
+--[[ Hold timer
 set_callback(function ()
     if hold_timer > 0 then
         hold_timer = hold_timer - 1;
@@ -241,8 +247,7 @@ set_callback(function ()
 end, ON.PRE_PROCESS_INPUT)
 ]]
 
--- wintime
---[[
+--[[ wintime
 set_callback(function ()
     prinspect(state.time_total);
     options.f_endtime = format_time(state.time_total);
@@ -251,29 +256,52 @@ end, ON.WIN)
 
 
 -- Options
+-- seed input
 register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen.\nAlso automatically inserts the seed at the start of the run", "");
 
--- imports seed
-register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter an external seed\nThen press the button to update the seed\nMake sure you are in the character select screen before using it",
+-- updates seed
+register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter a seed\nThen press the button to update the seed\nYou cannot update the seed during a run.",
 function ()
-    if state.screen == SCREEN.CHARACTER_SELECT then
-        local type = 16
+    if state.screen == SCREEN.LEVEL or state.screen == SCREEN.TRANSITION then
+        print("Go to main menu to update the seed!")
+        error()
+        return
+    end
 
-        if tonumber(options.ab_seed, type) == nil then
-            print("Invalid Seed!")
+    local type = 16
+
+    if tonumber(options.ab_seed, type) == nil then
+        print("Invalid Seed!")
+        error()
+        return
+    end
+ 
+    if state.screen == SCREEN.SEED_INPUT then
+        -- Custom seed input when used on seed input
+        print("Updated seed! (Seed input version)");
+        game_manager.screen_seed_input:set_seed(tonumber(options.ab_seed, type))
+    elseif state.screen == SCREEN.CHARACTER_SELECT then
+        -- Custom seed input when used on character select (To prevent the softlock)
+        state.seed = tonumber(options.ab_seed, type);
+        print("Updated seed! (old version). Make sure you are playing seeded mode!");
+    elseif state.screen == SCREEN.MENU then
+        -- Custom menu seed input to prevent the smokeeeey
+        if game_manager.screen_menu.state ~= 7 then
+            print("Don't update seed during an animation!")
             error()
         else
-            state.seed = tonumber(options.ab_seed, type);
-            print("Updated seed!");
+            print("Updated seed! (New version)");
+            play_seeded(tonumber(options.ab_seed, type));
         end
     else
-        print("You need to be in the Character Select screen to update the seed!");
-        error();
+        -- Custom (default) seed input
+        print("Updated seed! (New version?)");
+        play_seeded(tonumber(options.ab_seed, type));
     end
 end)
 
 -- emergency button
-register_option_button("c_EB", "Emergency button", "Gives you a free qilin to qilin skip with. Adds a 3 minute penalty on your time", function()
+register_option_button("c_EB", "Emergency button", "Gives you a free qilin to qilin skip with. Adds a 3 minute penalty on your time.", function()
     -- test if you are in tiamat
     if options.ca_emergency_lock then
         if state.theme ~= THEME.TIAMAT then
@@ -287,36 +315,48 @@ register_option_button("c_EB", "Emergency button", "Gives you a free qilin to qi
         local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
         pick_up(get_player(1, false).uid, jayjay);
 
-        if options.cc_bonus_rope then
-            get_player(1, false).inventory.ropes = get_player(1, false).inventory.ropes + 1;
-        end
+        --if options.cc_bonus_rope then
+        get_player(1, false).inventory.ropes = get_player(1, false).inventory.ropes + 1;
+        --end
+        -- Slightly increased penalty for jetpack
+        add_time(4*MIN); -- 4 minutes
     else
         local jayjay = spawn_on_floor(ENT_TYPE.MOUNT_QILIN, math.floor(0), math.floor(0), LAYER.PLAYER1);
         local the_boi = get_entity(jayjay) --[[@as Qilin]]
         the_boi.tamed = true
         --carry(jayjay, get_player(1, false).uid);
         the_boi:carry(get_player(1, false))
+        if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
+            add_time(2*MIN); -- 2 minutes
+        else
+            add_time(3*MIN); -- 3 minutes
+        end
     end
-    add_time(eb_penalty); -- 3 minutes
 end)
 
+-- emergency button lock. Prevents it from being used outside of tiamat unless deactivated
 register_option_bool("ca_emergency_lock", "Disable emergency button lock", "", true);
 
-register_option_bool("cb_ej", "Emergency Jetpack", "Replaces the qilin with the jetpack (the original emergency button)", false)
+-- OG emergency button
+register_option_bool("cb_ej", "Emergency Jetpack", "Replaces the qilin with the jetpack (the original emergency button).\nIncludes the bonus rope and has a 4 min penalty", false)
 
-register_option_bool("cc_bonus_rope", "Bonus rope", "Gives you one rope when using the emergency (jetpack) button. Requires the emergency jetpack option to be on", true)
+-- Cutscene skip. Might enable it permanently
+register_option_bool("d_cutskip", "Cutscene skip", "Our lord and savior", true);
 
-register_option_bool("d_cutskip", "Cutscene skip", "", true);
+-- The highly popular ankh skip mod
+register_option_bool("da_ankhskip", "Shorter Ankh animation", "Makes your respawns 2 times shorter", true);
 
-register_option_bool("e_ankhskip", "Shorter Ankh animation", "", true);
+-- Short CO my beloved
+register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
 
--- register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
+-- ending time
+register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
 
-register_option_string("f_endtime", "Ending time", "", "00:00.000");
-
+register_option_button("g_30", "30 minute button", "Button to 30 minutes", function()
+    add_time(30*MIN)
+end)
+-- R.I.P.
 -- register_option_button('g_Ej', 'Emergency button', 'Gives a jetpack for a 3 minute penalty', function()
-
---register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
 
 --[[ stuff
 register_option_int("g_deaths", "Total Deaths", "", 0, 0, 0)
