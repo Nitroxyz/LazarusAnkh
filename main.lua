@@ -1,11 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "10.10",
+    version = "11.6",
     author = "Nitroxy",
-    description = "On death revive and gain 0.5 minutes on your time\n\nOptions:\n"
+    description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 58
+-- 62
 
 --0.00034722222 days penalty
 
@@ -21,6 +21,8 @@ meta = {
     - Time without deaths
     - Death amount
 ]]
+
+--- variables ------------------------------------------------------------------------------------------------
 
 --Universal time in frames
 
@@ -45,6 +47,7 @@ local penalty = 30*SEC;
 --Used to determine the phase of the ankh for skipping the ankh cutscene
 local ankh_flag = 0;
 
+--- functions --------------------------------------------------------------------------------------------------
 
 -- Idea from PeterSCP
 local function format_time(time)
@@ -76,6 +79,8 @@ end
 local function add_time(time)
     state.time_total = state.time_total + time;
 end
+
+--- callbacks --------------------------------------------------------------------------------------------------------
 
 -- instant restart protection part 2
 set_callback(function()
@@ -167,7 +172,7 @@ end, ON.FRAME)
 -- olmec ankh
 set_post_entity_spawn(function(ent)
     ent = ent --[[@as Powerup]]
-    ent:set_pre_picked_up(function()
+    ent:set_pre_picked_up(function() -- could be post instead
         sval = false;
         add_time(-10*SEC);
         return false;
@@ -182,7 +187,17 @@ end, ON.CHARACTER_SELECT)
 
 -- Might be able to rewrite it to instead check for the win first, then the skip option, so you can save the end time regardless.
 -- cutscene skip. huge thanks to Super Ninja Fat/superninjafat for the code!
+-- Short co setting adjustment
 set_callback(function()
+    -- Automatically adjust settings during short co runs
+    --[[
+    if options.e_short_co then
+        options.ca_emergency_lock = false
+        options.cb_ej = true
+    end
+    ]]
+
+    -- Cutscene skip!!!
     if options.d_cutskip then
         if state.loading == 2 then
             if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
@@ -235,7 +250,7 @@ end, ON.POST_UPDATE)
 -- FEEDC0DE
 set_callback(function ()
     -- Because you are in adventure mode!
-    options.ab_seed = "FEEDC0DE"
+    -- options.ab_seed = "FEEDC0DE"
 end, ON.CAMP)
 
 --[[ Hold timer
@@ -247,19 +262,78 @@ set_callback(function ()
 end, ON.PRE_PROCESS_INPUT)
 ]]
 
---[[ wintime
+-- wintime for co
 set_callback(function ()
-    prinspect(state.time_total);
     options.f_endtime = format_time(state.time_total);
-end, ON.WIN)
+end, ON.CONSTELLATION)
+
+-- Options
+--[[
+register_option_callback("ab_seed", "", function(draw_ctx)
+    draw_ctx:win_separator_text("Seed input")
+    -- Input
+    options.ab_seed = draw_ctx:win_input_text("Seed input", "")
+    draw_ctx:win_text("Automatically inserts seed when entering the character select screen")
+    draw_ctx:win_text("Also automatically updates the seed at the start of the run")
+    -- Button
+    if draw_ctx:win_button("Update seed") then
+        if state.screen == SCREEN.LEVEL or state.screen == SCREEN.TRANSITION then
+            print("Go to main menu to update the seed!")
+            error()
+            return
+        end
+    
+        local type = 16
+    
+        if tonumber(options.ab_seed, type) == nil then
+            print("Invalid Seed!")
+            error()
+            return
+        end
+     
+        if state.screen == SCREEN.SEED_INPUT then
+            -- Custom seed input when used on seed input
+            print("Updated seed! (Seed input version)");
+            game_manager.screen_seed_input:set_seed(tonumber(options.ab_seed, type))
+        elseif state.screen == SCREEN.CHARACTER_SELECT then
+            -- Custom seed input when used on character select (To prevent the softlock)
+            state.seed = tonumber(options.ab_seed, type);
+            print("Updated seed! (old version). Make sure you are playing seeded mode!");
+        elseif state.screen == SCREEN.MENU then
+            -- Custom menu seed input to prevent the smokeeeey
+            if game_manager.screen_menu.state ~= 7 then
+                print("Don't update seed during an animation!")
+                error()
+            else
+                print("Updated seed! (New version)");
+                play_seeded(tonumber(options.ab_seed, type));
+            end
+        else
+            -- Custom (default) seed input
+            print("Updated seed! (New version?)");
+            play_seeded(tonumber(options.ab_seed, type));
+        end
+    end
+    draw_ctx:win_text("Use the \"Seed input\" field to enter a seed")
+    draw_ctx:win_text("Then press the button to update the seed")
+    draw_ctx:win_text("You cannot update the seed during a run.")
+end)
 ]]
 
 
--- Options
+--- options ------------------------------------------------------------------------------
+
+
+--seed stuff
+register_option_callback("a_seedline", nil, function(draw_ctx)
+    draw_ctx:win_separator_text("Seed input")
+end)
+
 -- seed input
 register_option_string("ab_seed", "Seed input", "Automatically inserts seed of the run in the character select screen.\nAlso automatically inserts the seed at the start of the run", "");
 
 -- updates seed
+
 register_option_button("b_button_seed", "Update seed", "Use the \"Seed input\" field to enter a seed\nThen press the button to update the seed\nYou cannot update the seed during a run.",
 function ()
     if state.screen == SCREEN.LEVEL or state.screen == SCREEN.TRANSITION then
@@ -287,8 +361,7 @@ function ()
     elseif state.screen == SCREEN.MENU then
         -- Custom menu seed input to prevent the smokeeeey
         if game_manager.screen_menu.state ~= 7 then
-            print("Don't update seed during an animation!")
-            error()
+            print("Don't update the seed during an animation!")
         else
             print("Updated seed! (New version)");
             play_seeded(tonumber(options.ab_seed, type));
@@ -300,13 +373,22 @@ function ()
     end
 end)
 
+register_option_callback("bz_EJ", nil, function(draw_ctx)
+    draw_ctx:win_separator_text("Emergency button")
+end)
+
 -- emergency button
 register_option_button("c_EB", "Emergency button", "Gives you a free qilin to qilin skip with. Adds a 3 minute penalty on your time.", function()
+    if state.screen ~= SCREEN.LEVEL then
+        print("Uh...")
+        error()
+        return
+    end
+
     -- test if you are in tiamat
     if options.ca_emergency_lock then
         if state.theme ~= THEME.TIAMAT then
             print("You need to be in tiamat to use the emergency button!");
-            error()
             return
         end
     end
@@ -318,14 +400,28 @@ register_option_button("c_EB", "Emergency button", "Gives you a free qilin to qi
         --if options.cc_bonus_rope then
         get_player(1, false).inventory.ropes = get_player(1, false).inventory.ropes + 1;
         --end
-        -- Slightly increased penalty for jetpack
-        add_time(4*MIN); -- 4 minutes
+        if options.e_short_co then
+            if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
+                add_time(1*MIN+30*SEC); -- 1.5 minutes
+            else
+                -- og short co times
+                add_time(2*MIN); -- 2 min
+            end
+        else
+            if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
+                add_time(3*MIN+30*SEC)
+            else
+                -- Slightly increased penalty for jetpack
+                add_time(4*MIN); -- 4 minutes
+            end
+        end
     else
         local jayjay = spawn_on_floor(ENT_TYPE.MOUNT_QILIN, math.floor(0), math.floor(0), LAYER.PLAYER1);
         local the_boi = get_entity(jayjay) --[[@as Qilin]]
         the_boi.tamed = true
         --carry(jayjay, get_player(1, false).uid);
         the_boi:carry(get_player(1, false))
+        -- Tablet timesave
         if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
             add_time(2*MIN); -- 2 minutes
         else
@@ -340,21 +436,45 @@ register_option_bool("ca_emergency_lock", "Disable emergency button lock", "", t
 -- OG emergency button
 register_option_bool("cb_ej", "Emergency Jetpack", "Replaces the qilin with the jetpack (the original emergency button).\nIncludes the bonus rope and has a 4 min penalty", false)
 
+register_option_callback("cz_skipline", nil, function (draw_ctx)
+    draw_ctx:win_separator_text("Skips")
+end)
+
 -- Cutscene skip. Might enable it permanently
 register_option_bool("d_cutskip", "Cutscene skip", "Our lord and savior", true);
 
 -- The highly popular ankh skip mod
 register_option_bool("da_ankhskip", "Shorter Ankh animation", "Makes your respawns 2 times shorter", true);
 
+register_option_callback("dz_additionalline", nil, function(draw_ctx)
+    draw_ctx:win_separator_text("Additional stuff")
+end)
+
 -- Short CO my beloved
-register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
+--register_option_bool("e_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
+register_option_callback("e_short_co", false, function(draw_ctx)
+    local old_val = options.e_short_co
+    options.e_short_co = draw_ctx:win_check("Short CO Mode", options.e_short_co)
+    draw_ctx:win_text("Limits the time to 30 minutes")
+    if old_val ~= options.e_short_co then
+        if options.e_short_co then
+            options.ca_emergency_lock = false
+            options.cb_ej = true
+            penalty = 60*SEC;
+        else
+            options.ca_emergency_lock = true
+            options.cb_ej = false
+            penalty = 30*SEC;
+        end
+    end
+end)
 
 -- ending time
-register_option_string("f_endtime", "Ending time", "Also shows Short CO ending level!", "00:00.000");
-
-register_option_button("g_30", "30 minute button", "Button to 30 minutes", function()
-    add_time(30*MIN)
+register_option_callback("f_endtime", "00:00.000", function(draw_ctx)
+    draw_ctx:win_input_text("Ending time", options.f_endtime)
+    draw_ctx:win_text("Also shows Short CO ending level!")
 end)
+
 -- R.I.P.
 -- register_option_button('g_Ej', 'Emergency button', 'Gives a jetpack for a 3 minute penalty', function()
 
