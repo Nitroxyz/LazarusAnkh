@@ -1,11 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "11.9",
+    version = "11.10",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 64
+-- 65
 
 --0.00034722222 days penalty
 
@@ -28,21 +28,33 @@ meta = {
 SEC = 60;
 MIN = 3600;
 
+--Pentalites
+PENALTY = {
+    ANKH = 30*SEC,
+    QILIN = 3*MIN,
+    TQILIN = 2*MIN,
+    JETPACK = 4*MIN,
+    TJETPACK = 3*MIN+30*SEC,
+}
+
+SHORT_PENALTY = {
+    ANKH = 60*SEC,
+    QILIN = -1,
+    TQILIN = -1,
+    JETPACK = 2*MIN,
+    TJETPACK = 1*MIN+30*SEC,
+}
+
 -- New universal flag to tell if a new race has been started
 local is_new_race = true;
+--Start of the game gives the ankh without penalty. If is_ankh_penalty == false, then you get no penalty
+local is_ankh_penalty = false;
 
---Start of the game gives the ankh without penalty. If sval == false, then you get no penalty
-local sval = false;
---Remember time
-local stime = 0;
+--Remember total time for instant restarts
+local stime = 1;
+
 --Enable/disable ankh respawning
 local ankh_respawn = true
-
---Penalty
-local penalty = 30*SEC;
-
---Emergency button penalty
-local eb_penalty = 3*MIN;
 
 --Used to determine the phase of the ankh for skipping the ankh cutscene
 local ankh_flag = 0;
@@ -91,7 +103,7 @@ end
 set_callback(function()
     ankh_respawn = true;
     deal_ready = false;
-    sval = false;
+    is_ankh_penalty = false;
     state.time_total = stime;
 
     -- start a new race post-gen
@@ -105,12 +117,12 @@ end, ON.START)
 -- instant restart protection part 1
 -- Now includes the automatic seed insertion
 set_callback(function()
-    if state.pause & 1 == 1 and state.pause & 2 == 2 then
+    is_new_race = state.pause & 1 == 1 and state.pause & 2 == 2
+
+    if is_new_race then
         stime = state.time_total;
-        is_new_race = true;
     else
         stime = 1;
-        is_new_race = false;
     end
 
     -- Start a new race pre-gen
@@ -177,10 +189,14 @@ set_callback(function()
     if has_ankh == false then
         -- time penalty
         get_player(1, false):give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
-        if sval then
-            add_time(penalty);
+        if is_ankh_penalty then
+            if options.ea_short_co then
+                add_time(SHORT_PENALTY.ANKH)
+            else
+                add_time(PENALTY.ANKH);
+            end
         else
-            sval = true;
+            is_ankh_penalty = true;
         end
     end
 end, ON.FRAME)
@@ -188,10 +204,11 @@ end, ON.FRAME)
 -- olmec ankh
 set_post_entity_spawn(function(ent)
     ent = ent --[[@as Powerup]]
+    -- return of the crushing ankh bug
     ent:set_post_destroy(function() -- could be post instead
-        sval = false;
+        is_ankh_penalty = false;
         add_time(-10*SEC);
-        print("Reduced the timer by 10 seconds instantly and give no penalty on death")
+        print("Reduced the timer by 10 seconds instantly and give no penalty on your next death")
         return false;
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
@@ -384,17 +401,17 @@ register_option_callback("c_EB", nil, function(draw_ctx)
             --end
             if options.ea_short_co then
                 if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
-                    add_time(1*MIN+30*SEC); -- 1.5 minutes
+                    add_time(SHORT_PENALTY.TJETPACK); -- 1.5 minutes
                 else
                     -- og short co times
-                    add_time(2*MIN); -- 2 min
+                    add_time(SHORT_PENALTY.JETPACK); -- 2 min
                 end
             else
                 if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
-                    add_time(3*MIN+30*SEC)
+                    add_time(PENALTY.TJETPACK) -- 3.5
                 else
                     -- Slightly increased penalty for jetpack
-                    add_time(4*MIN); -- 4 minutes
+                    add_time(PENALTY.JETPACK); -- 4 minutes
                 end
             end
         else
@@ -406,9 +423,9 @@ register_option_callback("c_EB", nil, function(draw_ctx)
             the_boi:carry(get_player(1, false))
             -- Tablet timesave
             if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
-                add_time(2*MIN); -- 2 minutes
+                add_time(PENALTY.TQILIN); -- 2 minutes
             else
-                add_time(3*MIN); -- 3 minutes
+                add_time(PENALTY.QILIN); -- 3 minutes
             end
         end
     end
@@ -445,6 +462,7 @@ register_option_callback("cb_ej", false, function(draw_ctx)
     draw_ctx:win_text("Includes the bonus rope and has a 4 min penalty")
 end)
 
+--[[
 register_option_callback("cc_stuck", 0, function(draw_ctx)
     deal_ready = true
     if state.screen ~= SCREEN.LEVEL or not options.ea_short_co or state.world == 8 or not deal_ready then
@@ -478,8 +496,10 @@ register_option_callback("cc_stuck", 0, function(draw_ctx)
             if choose then
                 local jayjay = spawn_on_floor(ENT_TYPE.ITEM_HOUYIBOW, math.floor(0), math.floor(0), LAYER.PLAYER);
                 local armin = spawn_on_floor(ENT_TYPE.ITEM_LIGHT_ARROW, math.floor(0), math.floor(0), LAYER.PLAYER);
-                get_entity(jayjay)--[[@as Bow]]:light_on_fire(60)
+                ]]
+                --get_entity(jayjay)--[[@as Bow]]:light_on_fire(60)
                 --get_entity(armin)--[[@as LightArrow]]:light_on_fire(60)
+                --[[
                 pick_up(jayjay, armin)
                 pick_up(get_player(1, false).uid, jayjay);
 
@@ -501,6 +521,7 @@ register_option_callback("cc_stuck", 0, function(draw_ctx)
     end
     options.cc_stuck = button_count
 end)
+]]
 
 register_option_callback("cz_skipline", nil, function (draw_ctx)
     draw_ctx:win_separator_text("Skips")
@@ -528,12 +549,10 @@ register_option_callback("ea_short_co", false, function(draw_ctx)
             -- Is short CO:
             options.ca_emergency_lock = false
             options.cb_ej = true
-            penalty = 60*SEC;
         else
             -- Is normal:
             options.ca_emergency_lock = true
             options.cb_ej = false
-            penalty = 30*SEC;
         end
     end
 end)
@@ -542,10 +561,6 @@ end)
 register_option_callback("f_endtime", "00:00.000", function(draw_ctx)
     draw_ctx:win_input_text("Ending time", options.f_endtime)
     draw_ctx:win_text("Also shows short CO ending level!")
-end)
-
-register_option_button("Z", "30 minute button", "", function()
-    add_time(30*MIN)
 end)
 
 -- R.I.P.
