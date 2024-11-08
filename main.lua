@@ -1,11 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "11.10",
+    version = "11.11",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
 
--- 65
+-- 66
 
 --0.00034722222 days penalty
 
@@ -312,7 +312,7 @@ end, ON.CAMP)
 register_option_callback("ab_seed", "", function(draw_ctx)
     draw_ctx:win_separator_text("Seed input")
     -- Input
-    options.ab_seed = draw_ctx:win_input_text("Seed input", "")
+    options.ab_seed = draw_ctx:win_input_text("Seed input", options.ab_seed)
     draw_ctx:win_text("Automatically inserts seed when entering the character select screen")
     draw_ctx:win_text("Also automatically updates the seed at the start of the run")
     local button_pressed = draw_ctx:win_button("Update seed")
