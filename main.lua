@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "11.11.1",
+    version = "11.11.2",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
@@ -29,7 +29,7 @@ SEC = 60;
 MIN = 3600;
 
 --Pentalites
---[[
+-- Normal
 PENALTY = {
     ANKH = 30*SEC,
     QILIN = 3*MIN,
@@ -37,17 +37,18 @@ PENALTY = {
     JETPACK = 4*MIN,
     TJETPACK = 3*MIN+30*SEC,
     OLMEC = -10*SEC,
+}
+
+--[[ Competitive times
+PENALTY = {
+    ANKH = 10*SEC,
+    QILIN = 30*SEC,
+    TQILIN = 15*SEC,
+    JETPACK = 1*MIN,
+    TJETPACK = 30*SEC,
+    OLMEC = 0,
 }
 ]]
-
-PENALTY = {
-    ANKH = 30*SEC,
-    QILIN = 3*MIN,
-    TQILIN = 2*MIN,
-    JETPACK = 4*MIN,
-    TJETPACK = 3*MIN+30*SEC,
-    OLMEC = -10*SEC,
-}
 
 SHORT_PENALTY = {
     ANKH = 60*SEC,
