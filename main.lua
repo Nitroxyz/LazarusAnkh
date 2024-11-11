@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "11.11",
+    version = "11.11.1",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
@@ -29,12 +29,24 @@ SEC = 60;
 MIN = 3600;
 
 --Pentalites
+--[[
 PENALTY = {
     ANKH = 30*SEC,
     QILIN = 3*MIN,
     TQILIN = 2*MIN,
     JETPACK = 4*MIN,
     TJETPACK = 3*MIN+30*SEC,
+    OLMEC = -10*SEC,
+}
+]]
+
+PENALTY = {
+    ANKH = 30*SEC,
+    QILIN = 3*MIN,
+    TQILIN = 2*MIN,
+    JETPACK = 4*MIN,
+    TJETPACK = 3*MIN+30*SEC,
+    OLMEC = -10*SEC,
 }
 
 SHORT_PENALTY = {
@@ -43,6 +55,7 @@ SHORT_PENALTY = {
     TQILIN = -1,
     JETPACK = 2*MIN,
     TJETPACK = 1*MIN+30*SEC,
+    OLMEC = -10*SEC,
 }
 
 -- New universal flag to tell if a new race has been started
@@ -207,7 +220,7 @@ set_post_entity_spawn(function(ent)
     -- return of the crushing ankh bug
     ent:set_post_destroy(function() -- could be post instead
         is_ankh_penalty = false;
-        add_time(-10*SEC);
+        add_time(PENALTY.OLMEC);
         print("Reduced the timer by 10 seconds instantly and give no penalty on your next death")
         return false;
     end)
@@ -462,7 +475,7 @@ register_option_callback("cb_ej", false, function(draw_ctx)
     draw_ctx:win_text("Includes the bonus rope and has a 4 min penalty")
 end)
 
---[[
+--[[ Emergency bow
 register_option_callback("cc_stuck", 0, function(draw_ctx)
     deal_ready = true
     if state.screen ~= SCREEN.LEVEL or not options.ea_short_co or state.world == 8 or not deal_ready then
