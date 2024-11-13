@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "11.11.2",
+    version = "12.0",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
@@ -35,7 +35,7 @@ PENALTY = {
     QILIN = 3*MIN,
     TQILIN = 2*MIN,
     JETPACK = 4*MIN,
-    TJETPACK = 3*MIN+30*SEC,
+    TJETPACK = 3*MIN,
     OLMEC = -10*SEC,
 }
 
@@ -387,7 +387,7 @@ register_option_callback("c_EB", nil, function(draw_ctx)
     else
         draw_ctx:win_text("Gives a jetpack for a 4 minute penalty.")
         draw_ctx:win_text("Also gives a rope when used.")
-        draw_ctx:win_text("The penalty is reduced by 0.5 minutes if you have the tablet")
+        draw_ctx:win_text("The penalty is reduced by 1 minute if you have the tablet")
     end
 
     if button_pressed then
