@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "12.0",
+    version = "12.1",
     author = "Nitroxy",
     description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
 }
@@ -262,7 +262,7 @@ set_callback(function()
         if state.loading == 2 then
             if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
                 state.screen_next = SCREEN.SCORES;
-                state.end_spaceship_character = ENT_TYPE.CHAR_ANA_SPELUNKY; --not perfect >:(
+                state.end_spaceship_character = ENT_TYPE.CHAR_OTAKU; --not perfect >:(
                 options.f_endtime = format_time(state.time_total);
             end
         end
