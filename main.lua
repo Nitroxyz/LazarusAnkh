@@ -1,11 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "12.1",
+    version = "12.7",
     author = "Nitroxy",
-    description = "On death revive and gain 0.5 minutes on your time\n\nFeatures:\n"
+    description = "On death revive and gain a 20 second penalty on your time\n\nFeatures:\n"
 }
 
--- 66
+-- 72
 
 --0.00034722222 days penalty
 
@@ -31,12 +31,12 @@ MIN = 3600;
 --Pentalites
 -- Normal
 PENALTY = {
-    ANKH = 30*SEC,
+    ANKH = 20*SEC,
     QILIN = 3*MIN,
-    TQILIN = 2*MIN,
+    TQILIN = 1*MIN+30*SEC,
     JETPACK = 4*MIN,
     TJETPACK = 3*MIN,
-    OLMEC = -10*SEC,
+    OLMEC = -20*SEC,
 }
 
 --[[ Competitive times
@@ -55,9 +55,19 @@ SHORT_PENALTY = {
     QILIN = -1,
     TQILIN = -1,
     JETPACK = 2*MIN,
-    TJETPACK = 1*MIN+30*SEC,
-    OLMEC = -10*SEC,
+    TJETPACK = 1*MIN,
+    OLMEC = 0*SEC,
 }
+
+--[[ OG
+PENALTY = {
+    ANKH = 30*SEC,
+    QILIN = 3*MIN,
+    TQILIN = 2*MIN,
+    JETPACK = 4*MIN,
+    TJETPACK = 3*MIN,
+    OLMEC = -10*SEC,
+}]]
 
 -- New universal flag to tell if a new race has been started
 local is_new_race = true;
@@ -221,11 +231,32 @@ set_post_entity_spawn(function(ent)
     -- return of the crushing ankh bug
     ent:set_post_destroy(function() -- could be post instead
         is_ankh_penalty = false;
-        add_time(PENALTY.OLMEC);
-        print("Reduced the timer by 10 seconds instantly and give no penalty on your next death")
+        if not options.ea_short_co then
+            add_time(PENALTY.OLMEC);
+            print("Reduced the timer by 20 seconds instantly and give no penalty on your next death")
+        end
         return false;
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
+
+-- notp1
+set_post_entity_spawn(function(ent)
+    if options.eb_notp then
+        ent:destroy()
+    end
+end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_TELEPORTER)
+-- notp2
+set_post_entity_spawn(function(ent)
+    if options.eb_notp then
+        ent:destroy()
+    end
+end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_TELEPORTER_BACKPACK)
+-- notp3
+set_post_entity_spawn(function(ent)
+    if options.eb_notp then
+        ent:destroy()
+    end
+end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PURCHASABLE_TELEPORTER_BACKPACK)
 
 -- deal check
 set_post_entity_spawn(function(ent)
@@ -318,6 +349,29 @@ set_callback(function ()
     -- options.ab_seed = "FEEDC0DE"
 end, ON.CAMP)
 
+--[[ No dark level when fast af (fienestar version)
+set_callback(function()
+    if options.dc_nodark then
+        if state.time_last_level < 30*SEC then
+            state.level_flags = clr_flag(state.level_flags, 18)
+        end
+    end
+end, ON.POST_ROOM_GENERATION)
+]]
+
+-- Fancy lights (Spirit1 version)
+set_callback(function()
+    if options.dc_nodark then
+        if state.time_last_level < 30*SEC then
+            if not state.illumination then
+                state.level_flags = clr_flag(state.level_flags, 18)
+                state.illumination = create_illumination(Color:white(), 20000, 172, 252)
+            end
+        end
+    end
+end, ON.POST_LEVEL_GENERATION)
+
+
 --- options ------------------------------------------------------------------------------
 
 
@@ -379,10 +433,10 @@ register_option_callback("c_EB", nil, function(draw_ctx)
     if options.cb_ej == false then
         draw_ctx:win_text("Gives you a free qilin to qilin skip with.")
         draw_ctx:win_text("Adds a 3 minute penalty on your time.")
-        draw_ctx:win_text("The penalty is reduced by 1 minute if you have the tablet")
+        draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
     elseif options.ea_short_co then
         draw_ctx:win_text("It's short CO! Go and get a free jetpack for only a 2 minute penalty!")
-        draw_ctx:win_text("The penalty is also reduced by 0.5 minutes if you have the tablet!")
+        draw_ctx:win_text("The penalty is also reduced by 50% if you have the tablet!")
         draw_ctx:win_text("Note: During short CO you can use the emergency button at any time")
     else
         draw_ctx:win_text("Gives a jetpack for a 4 minute penalty.")
@@ -547,6 +601,9 @@ register_option_bool("da_cutskip", "Cutscene skip", "Our lord and savior", true)
 -- The highly popular ankh skip mod
 register_option_bool("db_ankhskip", "Shorter Ankh animation", "Makes your respawns 2 times shorter", true);
 
+-- The other darkness remover
+register_option_bool("dc_nodark", "Vanilla dark level behavior", "Disables dark levels if you are fast enough", true);
+
 register_option_callback("e_additionalline", nil, function(draw_ctx)
     draw_ctx:win_separator_text("Additional stuff")
 end)
@@ -570,6 +627,9 @@ register_option_callback("ea_short_co", false, function(draw_ctx)
         end
     end
 end)
+
+-- NO TP!
+register_option_bool("eb_notp", "Remove teleporters", "Only disable when everyone agrees", true)
 
 -- ending time
 register_option_callback("f_endtime", "00:00.000", function(draw_ctx)
