@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "12.7",
+    version = "13.0",
     author = "Nitroxy",
     description = "On death revive and gain a 20 second penalty on your time\n\nFeatures:\n"
 }
@@ -141,12 +141,12 @@ end, ON.START)
 -- instant restart protection part 1
 -- Now includes the automatic seed insertion
 set_callback(function()
-    is_new_race = state.pause & 1 == 1 and state.pause & 2 == 2
+    is_new_race = not(state.pause & 1 == 1 and state.pause & 2 == 2)
 
     if is_new_race then
-        stime = state.time_total;
+        stime = 1
     else
-        stime = 1;
+        stime = state.time_total
     end
 
     -- Start a new race pre-gen
@@ -239,6 +239,7 @@ set_post_entity_spawn(function(ent)
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 
+--[[
 -- notp1
 set_post_entity_spawn(function(ent)
     if options.eb_notp then
@@ -257,6 +258,7 @@ set_post_entity_spawn(function(ent)
         ent:destroy()
     end
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PURCHASABLE_TELEPORTER_BACKPACK)
+]]
 
 -- deal check
 set_post_entity_spawn(function(ent)
@@ -293,7 +295,7 @@ set_callback(function()
         if state.loading == 2 then
             if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
                 state.screen_next = SCREEN.SCORES;
-                state.end_spaceship_character = ENT_TYPE.CHAR_OTAKU; --not perfect >:(
+                state.end_spaceship_character = ENT_TYPE.CHAR_OTAKU; --perfect :3
                 options.f_endtime = format_time(state.time_total);
             end
         end
@@ -302,7 +304,7 @@ set_callback(function()
     -- Main part of ankh skip
     if options.db_ankhskip then
         local ankhs = get_entities_by_type(ENT_TYPE.ITEM_POWERUP_ANKH);
-        for i, v in pairs(ankhs) do
+        for _, v in pairs(ankhs) do
             local ankh = get_entity(v) --[[@as AnkhPowerup]]
 
             -- This should be able to replace the previous flag stuff
@@ -629,7 +631,7 @@ register_option_callback("ea_short_co", false, function(draw_ctx)
 end)
 
 -- NO TP!
-register_option_bool("eb_notp", "Remove teleporters", "Only disable when everyone agrees", true)
+-- register_option_bool("eb_notp", "Remove teleporters", "Only disable when everyone agrees", true)
 
 -- ending time
 register_option_callback("f_endtime", "00:00.000", function(draw_ctx)
@@ -653,8 +655,10 @@ register_option_float("top", "top", "", 0.910, -1, 1)
 register_option_float("big", "big", "", 0.05, 0, 2)
 ]]
 
+--[[
 exports = {
     set_penalty = function(t_penalty)
-        penalty = t_penalty;
+        --penalty = t_penalty;
     end
 }
+]]
