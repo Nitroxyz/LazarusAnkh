@@ -14,13 +14,10 @@ meta = {
     - Custom blue ankh sprite
     - If a real ankh is being picked up:
         - Revert the custom sprite
-    - Add an option to toggle how big the penalty is (maybe)
-    - Add a counter for each death
     - Remember backitem and give it back on death
     - Force path
 
     - Time without deaths
-    - Death amount
 ]]
 
 --- variables ------------------------------------------------------------------------------------------------
@@ -28,13 +25,6 @@ meta = {
 --Universal time in frames
 SEC = 60;
 MIN = 3600;
-
-STATE = {
-    STARTING = 0,
-    PLAYING = 1,
-    FINISHED = 2,
-    FORFEIT = 3,
-}
 
 --Pentalites
 -- Normal
@@ -83,6 +73,13 @@ options.da_cutskip = true
 options.db_ankhskip = true
 options.dc_nodark = true
 ]]
+
+STATE = {
+    STARTING = 0,
+    PLAYING = 1,
+    FINISHED = 2,
+    FORFEIT = 3,
+}
 
 -- New universal flag to tell if a new race has been started
 local is_new_race = true
@@ -649,7 +646,7 @@ register_option_callback("ea_short_co", false, function(draw_ctx)
             -- Is short CO:
             options.ca_emergency_lock = false
             options.cb_ej = true
-            if deaths > 0 then
+            if deaths > 0 and (state.screen == SCREEN.LEVEL or state.screen == SCREEN.TRANSITION) then
                 print("Adjust penalty")
                 add_time((SHORT_PENALTY.ANKH-PENALTY.ANKH)*deaths)
                 -- Bonus penalty for forgetting to enable it
