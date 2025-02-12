@@ -1,12 +1,12 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "13.5",
+    version = "13.6",
     author = "Nitroxy",
     --description = "On death revive and gain a 20 second penalty on your time\n\nFeatures:\n"
     description = "On death revive and gain a 20 second penalty on your time"
 }
 
--- 76
+-- 77
 
 --0.00034722222 days penalty
 
@@ -19,6 +19,8 @@ meta = {
 
     - Time without deaths
 ]]
+
+local debug = require("debug_pack.lua")
 
 --- variables ------------------------------------------------------------------------------------------------
 
@@ -35,6 +37,7 @@ PENALTY = {
     JETPACK = 4*MIN,
     TJETPACK = 3*MIN,
     OLMEC = -20*SEC,
+    SCO = 30*MIN,
 }
 
 --[[ Competitive times
@@ -45,6 +48,7 @@ PENALTY = {
     JETPACK = 1*MIN,
     TJETPACK = 30*SEC,
     OLMEC = 0,
+    SCO = 20*MIN,
 }
 ]]
 
@@ -98,6 +102,9 @@ local ankh_flag = 0
 
 local deaths = 0
 
+-- When you die while cursed, you keep the cursed effect
+local was_cursed = false
+
 -- Deal coords
 local deal_x = 1
 local deal_y = 1
@@ -135,18 +142,19 @@ end
 
 -- Add the penalty time
 local function add_time(time)
-    state.time_total = state.time_total + time;
+    state.time_total = state.time_total + time
 end
 
 --- callbacks --------------------------------------------------------------------------------------------------------
 
 -- instant restart protection part 2
 set_callback(function()
-    ankh_respawn = true;
-    deal_ready = false;
-    is_ankh_penalty = true;
+    ankh_respawn = true
+    deal_ready = false
+    is_ankh_penalty = true
+    was_cursed = false
     state.time_total = stime;
-    get_player(1, false):give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
+    get_player(1, false):give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH)
     -- start a new race post-gen
     if is_new_race then
         schrodingers_ushabti()
@@ -208,10 +216,11 @@ set_callback(function()
         return;
     end
 
+    player_state = STATE.PLAYING
 
         --Short CO finisher
         if options.ea_short_co then
-            if state.time_total >= 30*MIN then
+            if state.time_total >= PENALTY.SCO then
                 state.screen_next = SCREEN.DEATH;
                 load_death_screen();
                 
@@ -239,17 +248,25 @@ set_callback(function()
             else
                 add_time(PENALTY.ANKH);
             end
+            if was_cursed then
+                get_player(1, false):set_cursed(true, true) -- maybe effect, maybe not
+            end
         else
             is_ankh_penalty = true;
         end
     end
+
+    if not test_flag(get_player(1, false).flags, ENT_FLAG.DEAD) then
+        was_cursed = get_player(1, false):is_cursed()
+    end
+    --debug.q.draw_list(0, {test_flag(get_player(1, false).flags, ENT_FLAG.DEAD), get_player(1, false):is_cursed(), was_cursed})
 end, ON.FRAME)
 
 -- olmec ankh
 set_post_entity_spawn(function(ent)
     ent = ent --[[@as Powerup]]
     -- return of the crushing ankh bug
-    ent:set_post_destroy(function() -- could be post instead
+    ent:set_post_destroy(function()
         is_ankh_penalty = false;
         if not options.ea_short_co then
             add_time(PENALTY.OLMEC);
@@ -298,7 +315,6 @@ set_post_entity_spawn(function(ent)
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_LIGHT_ARROW)
 
--- :)
 set_post_entity_spawn(function(ent)
     if ent.x > 15 and ent.x < 18 then
         if math.random(2) == 2 then
@@ -306,7 +322,6 @@ set_post_entity_spawn(function(ent)
         end
     end
 end, SPAWN_TYPE.ANY, MASK.ANY, ENT_TYPE.ACTIVEFLOOR_BUBBLE_PLATFORM)
-
 
 -- exports seed
 set_callback(function()
@@ -621,6 +636,7 @@ register_option_callback("d_skips", nil, function (draw_ctx)
     if options.g_additional_options then
         draw_ctx:win_separator_text("Skips")
         --options.da_cutskip = draw_ctx:win_check("Cutscene skip", options.da_cutskip)      -- Needs to be disabled bc stuff breaks when this is off
+        options.da_cutskip = true
         options.db_ankhskip = draw_ctx:win_check("Shorter Ankh animation", options.db_ankhskip)
         options.dc_nodark = draw_ctx:win_check("Vanilla dark level behavior", options.dc_nodark)
     else
@@ -678,9 +694,6 @@ end)
 
 -- Additional options
 register_option_bool("g_additional_options", "Show additional options", "If you hate qol. Resets to defaults when disabled", false)
-
--- R.I.P.
--- register_option_button('g_Ej', 'Emergency button', 'Gives a jetpack for a 3 minute penalty', function()
 
 --[[ Emergency bow
 register_option_callback("cc_stuck", 0, function(draw_ctx)
