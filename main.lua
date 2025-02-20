@@ -1,12 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "13.6",
+    version = "14.0",
     author = "Nitroxy",
-    --description = "On death revive and gain a 20 second penalty on your time\n\nFeatures:\n"
-    description = "On death revive and gain a 20 second penalty on your time"
+    description = "The shiny racing mod"
 }
 
--- 77
+-- 83
 
 --0.00034722222 days penalty
 
@@ -20,7 +19,7 @@ meta = {
     - Time without deaths
 ]]
 
-local debug = require("debug_pack.lua")
+--local debug = require("debug_pack.lua")
 
 --- variables ------------------------------------------------------------------------------------------------
 
@@ -49,6 +48,46 @@ PENALTY = {
     TJETPACK = 30*SEC,
     OLMEC = 0,
     SCO = 20*MIN,
+}
+]]
+
+--[[ Profiles (W.i.P)
+PROFILES = {
+    BASE = {
+        ANKH = 20*SEC,
+        QILIN = 3*MIN,
+        TQILIN = 1*MIN+30*SEC,
+        JETPACK = 4*MIN,
+        TJETPACK = 3*MIN,
+        OLMEC = -20*SEC,
+        SCO = 30*MIN,
+    },
+    SHORT_CO = {
+    ANKH = 60*SEC,
+    QILIN = 2*MIN,
+    TQILIN = 1*MIN,
+    JETPACK = 2*MIN,
+    TJETPACK = 1*MIN,
+    OLMEC = 0*SEC,
+    },
+    COMP = {
+        ANKH = 10*SEC,
+        QILIN = 30*SEC,
+        TQILIN = 15*SEC,
+        JETPACK = 1*MIN,
+        TJETPACK = 30*SEC,
+        OLMEC = 0,
+        SCO = 20*MIN,
+    },
+    CASUAL = {
+        ANKH = 30*SEC,
+        QILIN = 4*MIN,
+        TQILIN = 2*MIN,
+        JETPACK = 4*MIN,
+        TJETPACK = 3*MIN,
+        OLMEC = -10*SEC,
+        SCO = 60*MIN,
+    },
 }
 ]]
 
@@ -88,7 +127,7 @@ STATE = {
 -- New universal flag to tell if a new race has been started
 local is_new_race = true
 
---Start of the game gives the ankh without penalty. If is_ankh_penalty == false, then you get no penalty
+--If is_ankh_penalty == false, then you get no penalty on the next death
 local is_ankh_penalty = true
 
 --Remember total time for instant restarts
@@ -99,6 +138,9 @@ local ankh_respawn = true
 
 --Used to determine the phase of the ankh for skipping the ankh cutscene
 local ankh_flag = 0
+
+--true when you picked up the olmec ankh the current run (not race)
+local olmec_ankhed = false
 
 local deaths = 0
 
@@ -145,6 +187,37 @@ local function add_time(time)
     state.time_total = state.time_total + time
 end
 
+local function time_to_string(time, adjective)
+    local minutes = math.floor(time/MIN)
+    local seconds = math.floor(time%MIN/SEC)
+    local result = ""
+    if minutes > 0 then
+        if minutes == 1 or adjective then
+            result = string.format("%d minute", minutes)
+        else
+            result = string.format("%d minutes", minutes)
+        end
+    end
+    if minutes > 0 and seconds > 0 then
+        result = result .. " and "
+    end
+    if seconds > 0 then
+        if seconds == 1 or adjective then
+            result = result .. string.format("%d second", seconds)
+        else
+            result = result .. string.format("%d seconds", seconds)
+        end
+    end
+    if result == "" then
+        if adjective then
+            result = "0 second"
+        else
+            result = "0 seconds"
+        end
+    end
+    return result
+end
+
 --- callbacks --------------------------------------------------------------------------------------------------------
 
 -- instant restart protection part 2
@@ -152,6 +225,7 @@ set_callback(function()
     ankh_respawn = true
     deal_ready = false
     is_ankh_penalty = true
+    olmec_ankhed = false
     was_cursed = false
     state.time_total = stime;
     get_player(1, false):give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH)
@@ -180,11 +254,11 @@ set_callback(function()
         -- Auto-import seeds
         if state.screen == SCREEN.CHARACTER_SELECT then
             local type = 16
-            if tonumber(options.ab_seed, type) == nil then
+            if tonumber(options.b_seed, type) == nil then
                 print("Invalid Seed!")
                 error("Invalid Seed!")
             else
-                state.seed = tonumber(options.ab_seed, type);
+                state.seed = tonumber(options.b_seed, type);
                 print("Auto-Updated seed!");
             end
         else
@@ -259,7 +333,6 @@ set_callback(function()
     if not test_flag(get_player(1, false).flags, ENT_FLAG.DEAD) then
         was_cursed = get_player(1, false):is_cursed()
     end
-    --debug.q.draw_list(0, {test_flag(get_player(1, false).flags, ENT_FLAG.DEAD), get_player(1, false):is_cursed(), was_cursed})
 end, ON.FRAME)
 
 -- olmec ankh
@@ -267,10 +340,13 @@ set_post_entity_spawn(function(ent)
     ent = ent --[[@as Powerup]]
     -- return of the crushing ankh bug
     ent:set_post_destroy(function()
-        is_ankh_penalty = false;
+        is_ankh_penalty = false
+        olmec_ankhed = true
         if not options.ea_short_co then
-            add_time(PENALTY.OLMEC);
-            print("Reduced the timer by 20 seconds instantly and give no penalty on your next death")
+            if PENALTY.OLMEC ~= 0 then
+                add_time(PENALTY.OLMEC);
+                print(string.format("Reduced the timer by %s instantly and give no penalty on your next death", time_to_string(-PENALTY.OLMEC, false)))
+            end
         end
         return false;
     end)
@@ -325,8 +401,10 @@ end, SPAWN_TYPE.ANY, MASK.ANY, ENT_TYPE.ACTIVEFLOOR_BUBBLE_PLATFORM)
 
 -- exports seed
 set_callback(function()
-    options.ab_seed = string.format("%08X", state.seed);
+    --[[ Out of commission
+    options.b_seed = string.format("%08X", state.seed);
     print("Auto-Imported seed!");
+    ]]
     player_state = STATE.STARTING
 end, ON.CHARACTER_SELECT)
 
@@ -396,7 +474,7 @@ end, ON.CONSTELLATION)
 -- FEEDC0DE
 set_callback(function ()
     -- Because you are in adventure mode!
-    -- options.ab_seed = "FEEDC0DE"
+    -- options.b_seed = "FEEDC0DE"
 end, ON.CAMP)
 
 --[[ No dark level when fast af (fienestar version)
@@ -426,17 +504,25 @@ end, ON.POST_LEVEL_GENERATION)
 
 
 -- Options
+
+-- Note
+
 -- seed callback functionality
-register_option_callback("ab_seed", "", function(draw_ctx)
+register_option_callback("b_seed", "", function(draw_ctx)
     draw_ctx:win_separator_text("Seed input")
     -- Input
-    options.ab_seed = draw_ctx:win_input_text("Seed input", options.ab_seed)
-    draw_ctx:win_text("Automatically inserts seed when entering the character select screen")
+    options.b_seed = draw_ctx:win_input_text("Seed input", options.b_seed)
     draw_ctx:win_text("Also automatically updates the seed at the start of the run")
     local button_pressed = draw_ctx:win_button("Update seed")
     draw_ctx:win_text("Use the \"Seed input\" field to enter a seed")
     draw_ctx:win_text("Then press the button to update the seed")
-    draw_ctx:win_text("You cannot update the seed during a run.")
+    local export_button = draw_ctx:win_button("Export seed")
+    draw_ctx:win_text("Displays the active seed in the seed input")
+    draw_ctx:win_text("Use it after making a seed in the vanilla seed input screen")
+    if export_button then
+        options.b_seed = string.format("%08X", state.seed);
+        print("Exported seed")
+    end
     -- Button
     if button_pressed then
         if state.screen == SCREEN.LEVEL or state.screen == SCREEN.TRANSITION then
@@ -445,13 +531,13 @@ register_option_callback("ab_seed", "", function(draw_ctx)
         end
     
         local type = 16
-        if options.ab_seed:len() ~= 8 then
+        if options.b_seed:len() ~= 8 then
             print("Invalid Seed! (Incorrect size)")
             error()
             return
         end
 
-        if tonumber(options.ab_seed, type) == nil then
+        if tonumber(options.b_seed, type) == nil then
             print("Invalid Seed!")
             error()
             return
@@ -460,20 +546,20 @@ register_option_callback("ab_seed", "", function(draw_ctx)
         if state.screen == SCREEN.SEED_INPUT then
             -- Custom seed input when used on seed input
             print("Updated seed! (Seed input version)");
-            game_manager.screen_seed_input:set_seed(tonumber(options.ab_seed, type))
+            game_manager.screen_seed_input:set_seed(tonumber(options.b_seed, type))
         elseif state.screen == SCREEN.CHARACTER_SELECT then
             -- Custom seed input when used on character select (To prevent the softlock)
 
             if state.screen_character_select.seeded_run then
-                state.seed = tonumber(options.ab_seed, type);
+                state.seed = tonumber(options.b_seed, type);
                 print("Updated seed! (old version). Make sure you are playing seeded mode!");
             else
-                play_seeded(tonumber(options.ab_seed, type));
+                play_seeded(tonumber(options.b_seed, type));
                 state.screen_last = SCREEN.MENU
                 print("You are in the wrong mode silly :)")
             end
             
-            state.seed = tonumber(options.ab_seed, type);
+            state.seed = tonumber(options.b_seed, type);
             print("Updated seed! (old version). Make sure you are playing seeded mode!");
         elseif state.screen == SCREEN.MENU then
             -- Custom menu seed input to prevent the smokeeeey
@@ -481,12 +567,12 @@ register_option_callback("ab_seed", "", function(draw_ctx)
                 print("Don't update seed during an animation!")
             else
                 print("Updated seed! (New version)");
-                play_seeded(tonumber(options.ab_seed, type));
+                play_seeded(tonumber(options.b_seed, type));
             end
         else
             -- Custom (default) seed input
             print("Updated seed! (New version?)");
-            play_seeded(tonumber(options.ab_seed, type));
+            play_seeded(tonumber(options.b_seed, type));
         end
     end
 end)
@@ -498,24 +584,40 @@ register_option_callback("c_EB", nil, function(draw_ctx)
 
     if options.ea_short_co then
         if options.cb_ej then
-            draw_ctx:win_text("It's short CO! Go and get a free jetpack for only a 2 minute penalty!")
-            draw_ctx:win_text("The penalty is also reduced by 50% if you have the tablet!")
+            draw_ctx:win_text(string.format("It's short CO! Go and get a free jetpack for only a %s penalty!", time_to_string(SHORT_PENALTY.JETPACK, true)))
+            if SHORT_PENALTY.JETPACK == 2 * SHORT_PENALTY.TJETPACK then
+                draw_ctx:win_text("The penalty is also reduced by 50% if you have the tablet!")
+            else
+                draw_ctx:win_text(string.format("The penalty is also reduced by %s if you have the tablet!", time_to_string(PENALTY.JETPACK-PENALTY.TJETPACK, false)))
+            end
             draw_ctx:win_text("Note: During short CO you can use the emergency button at any time")
         else
             draw_ctx:win_text("Soo")
             draw_ctx:win_text("Have fun on shortlowCO% lel")
-            draw_ctx:win_text("2 minute penalty when used")
-            draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
+            draw_ctx:win_text(string.format("%s penalty when used", time_to_string(SHORT_PENALTY.QILIN, true)))
+            if SHORT_PENALTY.QILIN == 2 * SHORT_PENALTY.TQILIN then
+                draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
+            else
+                draw_ctx:win_text(string.format("The penalty is reduced by %s if you have the tablet", time_to_string(SHORT_PENALTY.QILIN-SHORT_PENALTY.TQILIN, false)))
+            end
         end
     else
         if options.cb_ej then
-            draw_ctx:win_text("Gives a jetpack for a 4 minute penalty.")
+            draw_ctx:win_text(string.format("Gives a jetpack for a %s penalty", time_to_string(PENALTY.JETPACK, true)))
             draw_ctx:win_text("Also gives a rope when used.")
-            draw_ctx:win_text("The penalty is reduced by 1 minute if you have the tablet")
+            if PENALTY.JETPACK == 2 * PENALTY.TJETPACK then
+                draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
+            else
+                draw_ctx:win_text(string.format("The penalty is reduced by %s if you have the tablet", time_to_string(PENALTY.JETPACK-PENALTY.TJETPACK, false)))
+            end
         else
             draw_ctx:win_text("Gives you a free qilin to qilin skip with.")
-            draw_ctx:win_text("Adds a 3 minute penalty on your time.")
-            draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
+            draw_ctx:win_text(string.format("Adds a %s penalty on your time.", time_to_string(PENALTY.QILIN, true)))
+            if PENALTY.QILIN == 2 * PENALTY.TQILIN then
+                draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
+            else
+                draw_ctx:win_text(string.format("The penalty is reduced by %s if you have the tablet", time_to_string(PENALTY.QILIN-PENALTY.TQILIN, false)))
+            end
         end
     end
 
@@ -622,10 +724,10 @@ register_option_callback("cb_ej", false, function(draw_ctx)
         options.cb_ej = draw_ctx:win_check("Emergency Jetpack", options.cb_ej)
         if options.ea_short_co then
             draw_ctx:win_text("Disable this to get a qilin")
-            draw_ctx:win_text("Both have a 2 minute penalty")
+            draw_ctx:win_text("Both have a 2 minute penalty") -- Custom!
         else
             draw_ctx:win_text("Replaces the qilin with the jetpack (the original emergency button).")
-            draw_ctx:win_text("Includes the bonus rope and has a 4 min penalty")
+            draw_ctx:win_text(string.format("Includes the bonus rope and has a %s penalty", time_to_string(PENALTY.JETPACK, true)))
         end
     else
         options.cb_ej = (options.ea_short_co) -- true if shortCO, false when not
@@ -646,16 +748,13 @@ register_option_callback("d_skips", nil, function (draw_ctx)
     end
 end)
 
-register_option_callback("e_additionalline", nil, function(draw_ctx)
-    draw_ctx:win_separator_text("Additional stuff")
-end)
-
 -- Short CO my beloved
 --register_option_bool("ea_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
 register_option_callback("ea_short_co", false, function(draw_ctx)
+    draw_ctx:win_separator_text("Additional stuff")
     local old_val = options.ea_short_co
     options.ea_short_co = draw_ctx:win_check("Short CO Mode", options.ea_short_co)
-    draw_ctx:win_text("Limits the time to 30 minutes")
+    draw_ctx:win_text(string.format("Limits the time to %s", time_to_string(PENALTY.SCO, false)))
     -- When clicked:
     if old_val ~= options.ea_short_co then
         if options.ea_short_co then
@@ -685,15 +784,35 @@ register_option_callback("f_endtime", "00:00.000", function(draw_ctx)
     draw_ctx:win_text("Also shows short CO ending level!")
 end)
 
-register_option_callback("fa_deaths", 0, function(draw_ctx)
+register_option_callback("fa_bonus_stats", 0, function(draw_ctx)
     if options.g_additional_options then
+        local new_time = state.time_total-stime+1
+        if olmec_ankhed and not options.ea_short_co then
+            new_time = state.time_total-stime+1-PENALTY.OLMEC
+        end
+        draw_ctx:win_input_text("Entime plus", tostring(format_time(new_time)))
+        draw_ctx:win_text("Time for only this run (doesn't include olmec time reduction)")
+
         draw_ctx:win_input_text("Death count", tostring(deaths))
         draw_ctx:win_text("Count your number of failiures")
+
+        draw_ctx:win_input_text("Olmec Ankh", tostring(olmec_ankhed))
     end
 end)
 
 -- Additional options
 register_option_bool("g_additional_options", "Show additional options", "If you hate qol. Resets to defaults when disabled", false)
+
+register_option_callback("h_note", nil, function (draw_ctx)
+    draw_ctx:win_separator_text("Note")
+    if options.ea_short_co then
+        draw_ctx:win_text(string.format("Infinite Ankh: On death revive and gain a %s penalty", time_to_string(SHORT_PENALTY.ANKH, true)))
+    else
+        draw_ctx:win_text(string.format("Infinite Ankh: On death revive and gain a %s penalty", time_to_string(PENALTY.ANKH, true)))
+    end
+    draw_ctx:win_text("Instant restart protection: Instant restarting will not reset the time. You can always instant restart during a race")
+    draw_ctx:win_text("Olmec Ankh: Picking up the Ankh in Olmec's Lair will give you one revive without penalty and evtl. reduces the time a little")
+end)
 
 --[[ Emergency bow
 register_option_callback("cc_stuck", 0, function(draw_ctx)

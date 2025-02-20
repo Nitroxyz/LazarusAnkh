@@ -1,4 +1,4 @@
--- Version 2.1.1
+-- Version 3.0.0
 -- Made by Nitroxy
 
 local debug = {
@@ -7,7 +7,9 @@ local debug = {
     d = 0.1,        -- recommended delta value
     k = -0.9,       -- recommended x value for keys (in front)
     q = {},         -- quicker alternatives
-    active = true   -- only runs stuff when true
+    f = {},         -- forced to function, even when debug is inactive
+    active = true,  -- only runs stuff when true
+    once = {}
 }
 
 local draw_list = {}
@@ -92,15 +94,35 @@ function debug.if_change(id, value)
     return result
 end
 
+function debug.better_print(output)
+    if type(output) == "string" then
+        print(output)
+    else
+        prinspect(output)
+    end
+end
+
+function debug.reverse_enum(enum, value)
+    for key, val in pairs(enum) do
+        if val == value then
+            return key
+        end
+    end
+    return nil
+end
+
 function debug.print_on_change(id, value, output)
     if debug.active then
         if debug.if_change(id, value) then
-            if type(output) == "string" then
-                print(output)
-            else
-                prinspect(output)
-            end
+            debug.better_print(output)
         end
+    end
+end
+
+function debug.print_once(id, output)
+    if not debug.once[id] then
+        debug.better_print(output)
+        debug.once[id] = output
     end
 end
 
@@ -108,11 +130,7 @@ end
 function debug.print_if(check, output)
     if debug.active then
         if check then
-            if type(output) == "string" then
-                print(output)
-            else
-                prinspect(output)
-            end
+            debug.better_print(output)
         end
     end
 end
