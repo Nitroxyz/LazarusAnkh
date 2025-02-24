@@ -1,6 +1,6 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "14.0",
+    version = "14.1",
     author = "Nitroxy",
     description = "The shiny racing mod"
 }
@@ -146,6 +146,8 @@ local deaths = 0
 
 -- When you die while cursed, you keep the cursed effect
 local was_cursed = false
+local cursed_lives = 0
+
 
 -- Deal coords
 local deal_x = 1
@@ -227,6 +229,7 @@ set_callback(function()
     is_ankh_penalty = true
     olmec_ankhed = false
     was_cursed = false
+    cursed_lives = 0
     state.time_total = stime;
     get_player(1, false):give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH)
     -- start a new race post-gen
@@ -322,8 +325,9 @@ set_callback(function()
             else
                 add_time(PENALTY.ANKH);
             end
-            if was_cursed then
+            if was_cursed and cursed_lives > 0 then
                 get_player(1, false):set_cursed(true, true) -- maybe effect, maybe not
+                cursed_lives =  cursed_lives - 1
             end
         else
             is_ankh_penalty = true;
@@ -331,7 +335,14 @@ set_callback(function()
     end
 
     if not test_flag(get_player(1, false).flags, ENT_FLAG.DEAD) then
+        local prev_cursed = was_cursed
         was_cursed = get_player(1, false):is_cursed()
+        if not prev_cursed and was_cursed then
+            cursed_lives = 3
+        end
+        if not was_cursed then
+            cursed_lives = 0
+        end
     end
 end, ON.FRAME)
 
@@ -342,6 +353,7 @@ set_post_entity_spawn(function(ent)
     ent:set_post_destroy(function()
         is_ankh_penalty = false
         olmec_ankhed = true
+        cursed_lives = 0
         if not options.ea_short_co then
             if PENALTY.OLMEC ~= 0 then
                 add_time(PENALTY.OLMEC);
@@ -391,6 +403,7 @@ set_post_entity_spawn(function(ent)
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_LIGHT_ARROW)
 
+--[[
 set_post_entity_spawn(function(ent)
     if ent.x > 15 and ent.x < 18 then
         if math.random(2) == 2 then
@@ -398,6 +411,7 @@ set_post_entity_spawn(function(ent)
         end
     end
 end, SPAWN_TYPE.ANY, MASK.ANY, ENT_TYPE.ACTIVEFLOOR_BUBBLE_PLATFORM)
+]]
 
 -- exports seed
 set_callback(function()
@@ -786,9 +800,9 @@ end)
 
 register_option_callback("fa_bonus_stats", 0, function(draw_ctx)
     if options.g_additional_options then
-        local new_time = state.time_total-stime+1
+        local new_time = options.f_endtime-stime+1
         if olmec_ankhed and not options.ea_short_co then
-            new_time = state.time_total-stime+1-PENALTY.OLMEC
+            new_time = options.f_endtime-stime+1-PENALTY.OLMEC
         end
         draw_ctx:win_input_text("Entime plus", tostring(format_time(new_time)))
         draw_ctx:win_text("Time for only this run (doesn't include olmec time reduction)")
