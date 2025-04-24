@@ -1,11 +1,11 @@
 meta = {
     name = "Lazarus Ankh",
-    version = "14.1",
+    version = "14.3.0",
     author = "Nitroxy",
     description = "The shiny racing mod"
 }
 
--- 83
+-- 84
 
 --0.00034722222 days penalty
 
@@ -16,20 +16,20 @@ meta = {
     - Remember backitem and give it back on death
     - Force path
 
-    - Time without deaths
+    - Time without death penalty
 ]]
 
---local debug = require("debug_pack.lua")
+local debug = require("debug_pack.lua")
 
 --- variables ------------------------------------------------------------------------------------------------
 
 --Universal time in frames
-SEC = 60;
-MIN = 3600;
+local SEC = 60;
+local MIN = 3600;
 
 --Pentalites
--- Normal
-PENALTY = {
+--[[ Normal
+local PENALTY = {
     ANKH = 20*SEC,
     QILIN = 3*MIN,
     TQILIN = 1*MIN+30*SEC,
@@ -37,7 +37,7 @@ PENALTY = {
     TJETPACK = 3*MIN,
     OLMEC = -20*SEC,
     SCO = 30*MIN,
-}
+}]]
 
 --[[ Competitive times
 PENALTY = {
@@ -51,8 +51,19 @@ PENALTY = {
 }
 ]]
 
---[[ Profiles (W.i.P)
-PROFILES = {
+--[[ ShortCO
+local SHORT_PENALTY = {
+    ANKH = 60*SEC,
+    QILIN = 2*MIN,
+    TQILIN = 1*MIN,
+    JETPACK = 2*MIN,
+    TJETPACK = 1*MIN,
+    OLMEC = 0*SEC,
+}
+]]
+
+-- Profiles (W.i.P)
+local PROFILES = {
     BASE = {
         ANKH = 20*SEC,
         QILIN = 3*MIN,
@@ -63,12 +74,12 @@ PROFILES = {
         SCO = 30*MIN,
     },
     SHORT_CO = {
-    ANKH = 60*SEC,
-    QILIN = 2*MIN,
-    TQILIN = 1*MIN,
-    JETPACK = 2*MIN,
-    TJETPACK = 1*MIN,
-    OLMEC = 0*SEC,
+        ANKH = 60*SEC,
+        QILIN = 2*MIN,
+        TQILIN = 1*MIN,
+        JETPACK = 2*MIN,
+        TJETPACK = 1*MIN,
+        OLMEC = 0*SEC,
     },
     COMP = {
         ANKH = 10*SEC,
@@ -88,27 +99,16 @@ PROFILES = {
         OLMEC = -10*SEC,
         SCO = 60*MIN,
     },
+    OG = {
+        ANKH = 30*SEC,
+        QILIN = 3*MIN,
+        TQILIN = 2*MIN,
+        JETPACK = 4*MIN,
+        TJETPACK = 3*MIN,
+        OLMEC = -10*SEC,
+        SCO = 30*MIN,
+    }
 }
-]]
-
-SHORT_PENALTY = {
-    ANKH = 60*SEC,
-    QILIN = 2*MIN,
-    TQILIN = 1*MIN,
-    JETPACK = 2*MIN,
-    TJETPACK = 1*MIN,
-    OLMEC = 0*SEC,
-}
-
---[[ OG
-PENALTY = {
-    ANKH = 30*SEC,
-    QILIN = 3*MIN,
-    TQILIN = 2*MIN,
-    JETPACK = 4*MIN,
-    TJETPACK = 3*MIN,
-    OLMEC = -10*SEC,
-}]]
 
 -- Might need to set them, testing
 --[[
@@ -117,46 +117,55 @@ options.db_ankhskip = true
 options.dc_nodark = true
 ]]
 
-STATE = {
+local STATE = {
     STARTING = 0,
     PLAYING = 1,
     FINISHED = 2,
     FORFEIT = 3,
 }
 
+-- Profiles
+local ACTIVE_PROFILE = PROFILES.BASE
+local PENALTY = PROFILES.BASE
 -- New universal flag to tell if a new race has been started
 local is_new_race = true
-
 --If is_ankh_penalty == false, then you get no penalty on the next death
 local is_ankh_penalty = true
-
 --Remember total time for instant restarts
 local stime = 1
-
---Enable/disable ankh respawning
-local ankh_respawn = true
-
 --Used to determine the phase of the ankh for skipping the ankh cutscene
 local ankh_flag = 0
-
 --true when you picked up the olmec ankh the current run (not race)
 local olmec_ankhed = false
 
 local deaths = 0
-
 -- When you die while cursed, you keep the cursed effect
 local was_cursed = false
 local cursed_lives = 0
 
-
--- Deal coords
-local deal_x = 1
-local deal_y = 1
-local deal_ready = false
+local endtime_plus = ""
 
 local player_state = STATE.STARTING
 
 --- functions --------------------------------------------------------------------------------------------------
+
+-- shorter calls
+local function player()
+    return get_player(1, false)
+end
+
+local function screen_level()
+    return state.screen == SCREEN.LEVEL
+end
+
+local function in_game()
+    return screen_level() or state.screen == SCREEN.TRANSITION
+end
+
+local function to_seed()
+    local type = 16
+    return tonumber(options.b_seed, type)
+end
 
 -- Idea from PeterSCP
 local function format_time(time)
@@ -220,18 +229,35 @@ local function time_to_string(time, adjective)
     return result
 end
 
+local function update_endtime()
+    options.f_endtime = format_time(state.time_total)
+    local new_time = state.time_total-stime+1
+    if olmec_ankhed then
+        new_time = new_time-PENALTY.OLMEC
+    end
+    endtime_plus = format_time(new_time)
+    player_state = STATE.FINISHED
+end
+
+-- reused string
+local function fifty_percent(normal_time, tablet_time)
+    if normal_time == 2 * tablet_time then
+        return "The penalty is also reduced by 50% if you have the tablet!"
+    else
+        return string.format("The penalty is also reduced by %s if you have the tablet!", time_to_string(normal_time-tablet_time, false))
+    end
+end
+
 --- callbacks --------------------------------------------------------------------------------------------------------
 
 -- instant restart protection part 2
 set_callback(function()
-    ankh_respawn = true
-    deal_ready = false
     is_ankh_penalty = true
     olmec_ankhed = false
     was_cursed = false
     cursed_lives = 0
     state.time_total = stime;
-    get_player(1, false):give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH)
+    player():give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH)
     -- start a new race post-gen
     if is_new_race then
         schrodingers_ushabti()
@@ -245,6 +271,7 @@ end, ON.START)
 -- Now includes the automatic seed insertion
 set_callback(function()
     is_new_race = not(state.pause & 1 == 1 and state.pause & 2 == 2)
+    debug.print_if(is_new_race == in_game(), "Error code: 0")
 
     if is_new_race then
         stime = 1
@@ -256,19 +283,17 @@ set_callback(function()
     if is_new_race then
         -- Auto-import seeds
         if state.screen == SCREEN.CHARACTER_SELECT then
-            local type = 16
-            if tonumber(options.b_seed, type) == nil then
-                print("Invalid Seed!")
-                error("Invalid Seed!")
-            else
-                state.seed = tonumber(options.b_seed, type);
-                print("Auto-Updated seed!");
+            if options.b_seed ~= "FEEDC0DE" then
+                if to_seed() == nil or options.b_seed:len() ~= 8 then
+                    print("Invalid Seed!")
+                    error("Invalid Seed!")
+                elseif state.seed ~= to_seed() then
+                    state.seed = to_seed()
+                    print("Auto-Updated seed!")
+                end
             end
-        else
-            if state.screen == SCREEN.SEED_INPUT or state.screen == SCREEN.CAMP then
-                print("You cannot start a race from the \"Enter new seed\" screen or adventure mode!");
-                error();
-            end
+        elseif state.screen == SCREEN.SEED_INPUT or state.screen == SCREEN.CAMP then
+            print("You cannot start a race from the \"Enter new seed\" screen or adventure mode!")
         end
     end
 end, ON.RESET)
@@ -295,53 +320,50 @@ set_callback(function()
 
     player_state = STATE.PLAYING
 
-        --Short CO finisher
-        if options.ea_short_co then
-            if state.time_total >= PENALTY.SCO then
-                state.screen_next = SCREEN.DEATH;
-                load_death_screen();
-                
-                if state.world * state.level > 1 then
-                    if state.world == 8 then
-                        options.f_endtime = string.format("7-%d", state.level);
-                    else
-                        options.f_endtime = string.format("%d-%d", state.world, state.level);
-                    end
-                    player_state = STATE.FINISHED
+    --Short CO finisher
+    if options.ea_short_co then
+        if state.time_total >= ACTIVE_PROFILE.SCO then
+            state.screen_next = SCREEN.DEATH;
+            load_death_screen();
+            
+            if state.world*state.level > 1 then
+                if state.world == 8 then
+                    options.f_endtime = string.format("7-%d", state.level);
+                else
+                    options.f_endtime = string.format("%d-%d", state.world, state.level);
                 end
-                --state.time_total = 1;
+                player_state = STATE.FINISHED
             end
-        end
-
-    -- infinite ankh handling
-    local has_ankh = get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
-    if has_ankh == false then
-        -- time penalty
-        get_player(1, false):give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
-        deaths = deaths + 1
-        if is_ankh_penalty then
-            if options.ea_short_co then
-                add_time(SHORT_PENALTY.ANKH)
-            else
-                add_time(PENALTY.ANKH);
-            end
-            if was_cursed and cursed_lives > 0 then
-                get_player(1, false):set_cursed(true, true) -- maybe effect, maybe not
-                cursed_lives =  cursed_lives - 1
-            end
-        else
-            is_ankh_penalty = true;
+            --state.time_total = 1;
         end
     end
 
-    if not test_flag(get_player(1, false).flags, ENT_FLAG.DEAD) then
-        local prev_cursed = was_cursed
-        was_cursed = get_player(1, false):is_cursed()
-        if not prev_cursed and was_cursed then
-            cursed_lives = 3
+    -- infinite ankh handling
+    local has_ankh = player():has_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
+    if not has_ankh then
+        -- time penalty
+        player():give_powerup(ENT_TYPE.ITEM_POWERUP_ANKH);
+        deaths = deaths + 1
+        if is_ankh_penalty then
+            add_time(PENALTY.ANKH);
+            if was_cursed and cursed_lives > 0 then
+                player():set_cursed(true, true) -- maybe effect, maybe not
+                cursed_lives = cursed_lives - 1
+            end
         end
-        if not was_cursed then
-            cursed_lives = 0
+        is_ankh_penalty = true;
+    end
+
+    if not test_flag(player().flags, ENT_FLAG.DEAD) then
+        was_cursed = player():is_cursed()
+        if debug.if_change(2, was_cursed) then
+            if was_cursed then
+                -- got cursed
+                cursed_lives = 2
+            else
+                -- got uncursed
+                cursed_lives = 0
+            end
         end
     end
 end, ON.FRAME)
@@ -354,71 +376,17 @@ set_post_entity_spawn(function(ent)
         is_ankh_penalty = false
         olmec_ankhed = true
         cursed_lives = 0
-        if not options.ea_short_co then
-            if PENALTY.OLMEC ~= 0 then
-                add_time(PENALTY.OLMEC);
-                print(string.format("Reduced the timer by %s instantly and give no penalty on your next death", time_to_string(-PENALTY.OLMEC, false)))
-            end
+        if PENALTY.OLMEC ~= 0 then
+                    add_time(PENALTY.OLMEC);
+                    print(string.format("Reduced the timer by %s instantly and give no penalty on your next death", time_to_string(-PENALTY.OLMEC, false)))
+        else
+            print("Give no penalty on your next death")
         end
         return false;
     end)
 end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PICKUP_ANKH)
 
---[[
--- notp1
-set_post_entity_spawn(function(ent)
-    if options.eb_notp then
-        ent:destroy()
-    end
-end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_TELEPORTER)
--- notp2
-set_post_entity_spawn(function(ent)
-    if options.eb_notp then
-        ent:destroy()
-    end
-end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_TELEPORTER_BACKPACK)
--- notp3
-set_post_entity_spawn(function(ent)
-    if options.eb_notp then
-        ent:destroy()
-    end
-end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_PURCHASABLE_TELEPORTER_BACKPACK)
-]]
-
--- deal check
-set_post_entity_spawn(function(ent)
-    ent = ent --[[@as Bow]]
-    ent:set_post_destroy(function()
-        deal_ready = true;
-        return false;
-    end)
-end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_HOUYIBOW)
-
--- deal check 2
-set_post_entity_spawn(function(ent)
-    ent = ent --[[@as Bow]]
-    ent:set_post_destroy(function()
-        deal_ready = true;
-        return false;
-    end)
-end, SPAWN_TYPE.ANY, MASK.ITEM, ENT_TYPE.ITEM_LIGHT_ARROW)
-
---[[
-set_post_entity_spawn(function(ent)
-    if ent.x > 15 and ent.x < 18 then
-        if math.random(2) == 2 then
-            ent:destroy()
-        end
-    end
-end, SPAWN_TYPE.ANY, MASK.ANY, ENT_TYPE.ACTIVEFLOOR_BUBBLE_PLATFORM)
-]]
-
--- exports seed
 set_callback(function()
-    --[[ Out of commission
-    options.b_seed = string.format("%08X", state.seed);
-    print("Auto-Imported seed!");
-    ]]
     player_state = STATE.STARTING
 end, ON.CHARACTER_SELECT)
 
@@ -428,17 +396,24 @@ end, ON.CHARACTER_SELECT)
 set_callback(function()
     -- Automatically adjust settings during short co runs
 
+    --[[ Versions and their character
+    12.0 and before ANA
+    13.0 OTAKU (little jay)
+    14.0 AU
+    15.0 PILOT
+    ]]
+
     -- Cutscene skip!!!
-    if options.da_cutskip then
-        if state.loading == 2 then
-            if state.screen == SCREEN.LEVEL and state.screen_next == SCREEN.WIN then
-                state.screen_next = SCREEN.SCORES;
-                state.end_spaceship_character = ENT_TYPE.CHAR_AU; --perfect :3
-                options.f_endtime = format_time(state.time_total);
-                player_state = STATE.FINISHED
-            end
+    --if options.da_cutskip then
+    if state.loading == 2 then
+        if screen_level() and state.screen_next == SCREEN.WIN then
+            debug.print_if(screen_level() ~= in_game(), "Error code: 1")
+            state.screen_next = SCREEN.SCORES;
+            state.end_spaceship_character = ENT_TYPE.CHAR_PILOT; --perfect :3
+            update_endtime()
         end
     end
+    --end
 
     -- Main part of ankh skip
     if options.db_ankhskip then
@@ -454,6 +429,7 @@ set_callback(function()
                 --print("Do")
             -- Manual lockout to prevent the ankhskip from softlocking
     	    elseif ankh.timer1 > 677 then
+                debug.print_once(2, "Error code: 4")
                 return
             end
 
@@ -465,6 +441,8 @@ set_callback(function()
                     ankh.timer2 = 120;
                     ankh_flag = ankh_flag + 1;
                     --print("Re")
+                else
+                    debug.print_once(0, "Error code: 2")
                 end
             elseif ankh_flag == 2 then
                 -- You need to put it to any number below 120, 119 being optimal
@@ -473,6 +451,8 @@ set_callback(function()
                     ankh_flag = ankh_flag + 1;
                     --print("Mi")
                     -- no more extra flags, it just prevents more stages
+                else
+                    debug.print_once(1, "Error code: 3")
                 end
             end
         end
@@ -481,35 +461,20 @@ end, ON.POST_UPDATE)
 
 -- wintime for co
 set_callback(function ()
-    options.f_endtime = format_time(state.time_total);
-    player_state = STATE.FINISHED
+    update_endtime()
 end, ON.CONSTELLATION)
 
 -- FEEDC0DE
 set_callback(function ()
     -- Because you are in adventure mode!
-    -- options.b_seed = "FEEDC0DE"
+    options.b_seed = "FEEDC0DE"
 end, ON.CAMP)
-
---[[ No dark level when fast af (fienestar version)
-set_callback(function()
-    if options.dc_nodark then
-        if state.time_last_level < 30*SEC then
-            state.level_flags = clr_flag(state.level_flags, 18)
-        end
-    end
-end, ON.POST_ROOM_GENERATION)
-]]
 
 -- Fancy lights (Spirit1 version)
 set_callback(function()
-    if options.dc_nodark then
-        if state.time_last_level < 30*SEC then
-            if not state.illumination then
-                state.level_flags = clr_flag(state.level_flags, 18)
-                state.illumination = create_illumination(Color:white(), 20000, 172, 252)
-            end
-        end
+    if options.dc_nodark and state.time_last_level < 30*SEC and not state.illumination then
+        state.level_flags = clr_flag(state.level_flags, 18)
+        state.illumination = create_illumination(Color:white(), 20000, 172, 252)
     end
 end, ON.POST_LEVEL_GENERATION)
 
@@ -519,10 +484,8 @@ end, ON.POST_LEVEL_GENERATION)
 
 -- Options
 
--- Note
-
 -- seed callback functionality
-register_option_callback("b_seed", "", function(draw_ctx)
+register_option_callback("b_seed", "FEEDC0DE", function(draw_ctx)
     draw_ctx:win_separator_text("Seed input")
     -- Input
     options.b_seed = draw_ctx:win_input_text("Seed input", options.b_seed)
@@ -539,19 +502,16 @@ register_option_callback("b_seed", "", function(draw_ctx)
     end
     -- Button
     if button_pressed then
-        if state.screen == SCREEN.LEVEL or state.screen == SCREEN.TRANSITION then
+        if in_game() then
             print("Go to main menu to update the seed!")
             return
         end
-    
-        local type = 16
         if options.b_seed:len() ~= 8 then
             print("Invalid Seed! (Incorrect size)")
             error()
             return
         end
-
-        if tonumber(options.b_seed, type) == nil then
+        if to_seed() == nil then
             print("Invalid Seed!")
             error()
             return
@@ -559,34 +519,31 @@ register_option_callback("b_seed", "", function(draw_ctx)
      
         if state.screen == SCREEN.SEED_INPUT then
             -- Custom seed input when used on seed input
-            print("Updated seed! (Seed input version)");
-            game_manager.screen_seed_input:set_seed(tonumber(options.b_seed, type))
+            game_manager.screen_seed_input:set_seed(to_seed())
+            print("Updated seed! (Seed input version)")
         elseif state.screen == SCREEN.CHARACTER_SELECT then
             -- Custom seed input when used on character select (To prevent the softlock)
-
             if state.screen_character_select.seeded_run then
-                state.seed = tonumber(options.b_seed, type);
-                print("Updated seed! (old version). Make sure you are playing seeded mode!");
+                state.seed = to_seed()
+                print("Updated seed! (old version). Make sure you are playing seeded mode!")
             else
-                play_seeded(tonumber(options.b_seed, type));
+                play_seeded(to_seed())
                 state.screen_last = SCREEN.MENU
                 print("You are in the wrong mode silly :)")
             end
-            
-            state.seed = tonumber(options.b_seed, type);
-            print("Updated seed! (old version). Make sure you are playing seeded mode!");
         elseif state.screen == SCREEN.MENU then
             -- Custom menu seed input to prevent the smokeeeey
             if game_manager.screen_menu.state ~= 7 then
                 print("Don't update seed during an animation!")
             else
                 print("Updated seed! (New version)");
-                play_seeded(tonumber(options.b_seed, type));
+                play_seeded(to_seed())
             end
         else
             -- Custom (default) seed input
             print("Updated seed! (New version?)");
-            play_seeded(tonumber(options.b_seed, type));
+            debug.print_if(true, state.screen)
+            play_seeded(to_seed())
         end
     end
 end)
@@ -595,84 +552,58 @@ end)
 register_option_callback("c_EB", nil, function(draw_ctx)
     draw_ctx:win_separator_text("Emergency button")
     local button_pressed = draw_ctx:win_button("Emergency button")
-
+    --local ej = options.cb_ej
+    --local short_co = options.ea_short_co 
     if options.ea_short_co then
         if options.cb_ej then
-            draw_ctx:win_text(string.format("It's short CO! Go and get a free jetpack for only a %s penalty!", time_to_string(SHORT_PENALTY.JETPACK, true)))
-            if SHORT_PENALTY.JETPACK == 2 * SHORT_PENALTY.TJETPACK then
-                draw_ctx:win_text("The penalty is also reduced by 50% if you have the tablet!")
-            else
-                draw_ctx:win_text(string.format("The penalty is also reduced by %s if you have the tablet!", time_to_string(PENALTY.JETPACK-PENALTY.TJETPACK, false)))
-            end
+            draw_ctx:win_text(string.format("It's short CO! Go and get a free jetpack for only a %s penalty!", time_to_string(PENALTY.JETPACK, true)))
+            draw_ctx:win_text(fifty_percent(PENALTY.JETPACK, PENALTY.TJETPACK))
             draw_ctx:win_text("Note: During short CO you can use the emergency button at any time")
         else
             draw_ctx:win_text("Soo")
             draw_ctx:win_text("Have fun on shortlowCO% lel")
-            draw_ctx:win_text(string.format("%s penalty when used", time_to_string(SHORT_PENALTY.QILIN, true)))
-            if SHORT_PENALTY.QILIN == 2 * SHORT_PENALTY.TQILIN then
-                draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
-            else
-                draw_ctx:win_text(string.format("The penalty is reduced by %s if you have the tablet", time_to_string(SHORT_PENALTY.QILIN-SHORT_PENALTY.TQILIN, false)))
-            end
+            draw_ctx:win_text(string.format("%s penalty when used", time_to_string(PENALTY.QILIN, true)))
+            draw_ctx:win_text(fifty_percent(PENALTY.QILIN, PENALTY.TQILIN))
         end
     else
         if options.cb_ej then
             draw_ctx:win_text(string.format("Gives a jetpack for a %s penalty", time_to_string(PENALTY.JETPACK, true)))
             draw_ctx:win_text("Also gives a rope when used.")
-            if PENALTY.JETPACK == 2 * PENALTY.TJETPACK then
-                draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
-            else
-                draw_ctx:win_text(string.format("The penalty is reduced by %s if you have the tablet", time_to_string(PENALTY.JETPACK-PENALTY.TJETPACK, false)))
-            end
+            draw_ctx:win_text(fifty_percent(PENALTY.JETPACK, PENALTY.TJETPACK))
         else
             draw_ctx:win_text("Gives you a free qilin to qilin skip with.")
             draw_ctx:win_text(string.format("Adds a %s penalty on your time.", time_to_string(PENALTY.QILIN, true)))
-            if PENALTY.QILIN == 2 * PENALTY.TQILIN then
-                draw_ctx:win_text("The penalty is reduced by 50% if you have the tablet")
-            else
-                draw_ctx:win_text(string.format("The penalty is reduced by %s if you have the tablet", time_to_string(PENALTY.QILIN-PENALTY.TQILIN, false)))
-            end
+            draw_ctx:win_text(fifty_percent(PENALTY.QILIN, PENALTY.TQILIN))
         end
     end
 
     if button_pressed then
-        if state.screen ~= SCREEN.LEVEL then
+        if not in_game() then
             print("Uh...")
             error()
             return
         end
-    
+
         -- test if you are in tiamat
-        if options.ca_emergency_lock then
-            if state.theme ~= THEME.TIAMAT then
-                print("You need to be in tiamat to use the emergency button!");
-                return
-            end
+        if options.ca_emergency_lock and state.theme ~= THEME.TIAMAT then
+            print("You need to be in tiamat to use the emergency button!");
+            return
         end
-    
+
+        local has_tablet = player():has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY)
+
         if options.cb_ej then
-            if get_player(1, false):worn_backitem() == -1 then
+            if player():worn_backitem() == -1 then
                 -- Emergency jetpack version
                 local jayjay = spawn_on_floor(ENT_TYPE.ITEM_JETPACK, math.floor(0), math.floor(0), LAYER.PLAYER);
-                pick_up(get_player(1, false).uid, jayjay);
-        
-                --if options.cc_bonus_rope then
-                get_player(1, false).inventory.ropes = get_player(1, false).inventory.ropes + 1;
-                --end
-                if options.ea_short_co then
-                    if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
-                        add_time(SHORT_PENALTY.TJETPACK); -- 1 minutes
-                    else
-                        -- og short co times
-                        add_time(SHORT_PENALTY.JETPACK); -- 2 min
-                    end
+                pick_up(player().uid, jayjay);
+                -- bonus rope
+                player().inventory.ropes = player().inventory.ropes + 1;
+
+                if has_tablet then
+                    add_time(PENALTY.TJETPACK)
                 else
-                    if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
-                        add_time(PENALTY.TJETPACK) -- 3
-                    else
-                        -- Slightly increased penalty for jetpack
-                        add_time(PENALTY.JETPACK); -- 4 minutes
-                    end
+                    add_time(PENALTY.JETPACK)
                 end
             else
                 print("Cannot use while wearing a backitem!")
@@ -681,30 +612,19 @@ register_option_callback("c_EB", nil, function(draw_ctx)
         else
             -- Emergency qilin version
             local jayjay = spawn_on_floor(ENT_TYPE.MOUNT_QILIN, math.floor(0), math.floor(0), LAYER.PLAYER1);
-            local the_boi = get_entity(jayjay) --[[@as Qilin]]
-            the_boi.tamed = true
-            --carry(jayjay, get_player(1, false).uid);
-            the_boi:carry(get_player(1, false))
-            
+            local qilin = get_entity(jayjay) --[[@as Qilin]]
+            qilin.tamed = true
+            --carry(jayjay, player().uid);
+            qilin:carry(player())
 
-            if options.ea_short_co then
-                -- Tablet timesave
-                if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
-                    add_time(SHORT_PENALTY.TQILIN); -- 1 minutes
-                else
-                    add_time(SHORT_PENALTY.QILIN); -- 2 minutes
-                end
+            -- Tablet timesave
+            if has_tablet then
+                add_time(PENALTY.TQILIN); -- 2 minutes
             else
-                -- Tablet timesave
-                if get_player(1, false):has_powerup(ENT_TYPE.ITEM_POWERUP_TABLETOFDESTINY) then
-                    add_time(PENALTY.TQILIN); -- 2 minutes
-                else
-                    add_time(PENALTY.QILIN); -- 3 minutes
-                end
+                add_time(PENALTY.QILIN); -- 3 minutes
             end
         end
     end
-
 end)
 
 -- emergency button lock. Prevents it from being used outside of tiamat unless deactivated
@@ -713,13 +633,10 @@ register_option_callback("ca_emergency_lock", true, function(draw_ctx)
         options.ca_emergency_lock = false
         return
     end
-    local prev_val = options.ca_emergency_lock
     options.ca_emergency_lock = draw_ctx:win_check("Disable emergency button lock", options.ca_emergency_lock)
     draw_ctx:win_text("Prevents the buttons use outside of tiamat")
-    if options.ca_emergency_lock ~= prev_val then
-        if options.ca_emergency_lock == false then
-            options.cb_ej = true;
-        end
+    if debug.if_change(1, options.ca_emergency_lock) and not options.ca_emergency_lock then
+        options.cb_ej = true
     end
 end)
 
@@ -752,32 +669,29 @@ register_option_callback("d_skips", nil, function (draw_ctx)
     if options.g_additional_options then
         draw_ctx:win_separator_text("Skips")
         --options.da_cutskip = draw_ctx:win_check("Cutscene skip", options.da_cutskip)      -- Needs to be disabled bc stuff breaks when this is off
-        options.da_cutskip = true
         options.db_ankhskip = draw_ctx:win_check("Shorter Ankh animation", options.db_ankhskip)
         options.dc_nodark = draw_ctx:win_check("Vanilla dark level behavior", options.dc_nodark)
     else
-        options.da_cutskip = true
         options.db_ankhskip = true
         options.dc_nodark = true
     end
 end)
 
 -- Short CO my beloved
---register_option_bool("ea_short_co", "Short CO Mode", "Limits the time to 30 minutes", false);
 register_option_callback("ea_short_co", false, function(draw_ctx)
     draw_ctx:win_separator_text("Additional stuff")
-    local old_val = options.ea_short_co
     options.ea_short_co = draw_ctx:win_check("Short CO Mode", options.ea_short_co)
     draw_ctx:win_text(string.format("Limits the time to %s", time_to_string(PENALTY.SCO, false)))
     -- When clicked:
-    if old_val ~= options.ea_short_co then
+    if debug.if_change(0, options.ea_short_co) then
         if options.ea_short_co then
             -- Is short CO:
             options.ca_emergency_lock = false
             options.cb_ej = true
-            if deaths > 0 and (state.screen == SCREEN.LEVEL or state.screen == SCREEN.TRANSITION) then
+            PENALTY = PROFILES.SHORT_CO
+            if deaths > 0 and in_game() then
                 print("Adjust penalty")
-                add_time((SHORT_PENALTY.ANKH-PENALTY.ANKH)*deaths)
+                add_time((PENALTY.ANKH-ACTIVE_PROFILE.ANKH)*deaths)
                 -- Bonus penalty for forgetting to enable it
                 add_time(20*SEC)
             end
@@ -785,12 +699,10 @@ register_option_callback("ea_short_co", false, function(draw_ctx)
             -- Is normal:
             options.ca_emergency_lock = true
             options.cb_ej = false
+            PENALTY = ACTIVE_PROFILE
         end
     end
 end)
-
--- NO TP!
--- register_option_bool("eb_notp", "Remove teleporters", "Only disable when everyone agrees", true)
 
 -- ending time
 register_option_callback("f_endtime", "00:00.000", function(draw_ctx)
@@ -798,17 +710,14 @@ register_option_callback("f_endtime", "00:00.000", function(draw_ctx)
     draw_ctx:win_text("Also shows short CO ending level!")
 end)
 
-register_option_callback("fa_bonus_stats", 0, function(draw_ctx)
+-- bonus visuals
+register_option_callback("fa_bonus_stats", nil, function(draw_ctx)
     if options.g_additional_options then
-        local new_time = options.f_endtime-stime+1
-        if olmec_ankhed and not options.ea_short_co then
-            new_time = options.f_endtime-stime+1-PENALTY.OLMEC
-        end
-        draw_ctx:win_input_text("Entime plus", tostring(format_time(new_time)))
-        draw_ctx:win_text("Time for only this run (doesn't include olmec time reduction)")
-
         draw_ctx:win_input_text("Death count", tostring(deaths))
         draw_ctx:win_text("Count your number of failiures")
+
+        draw_ctx:win_input_text("Entime plus", endtime_plus)
+        draw_ctx:win_text("Time for only this run (doesn't include olmec time reduction)")
 
         draw_ctx:win_input_text("Olmec Ankh", tostring(olmec_ankhed))
     end
@@ -817,102 +726,10 @@ end)
 -- Additional options
 register_option_bool("g_additional_options", "Show additional options", "If you hate qol. Resets to defaults when disabled", false)
 
+-- Note
 register_option_callback("h_note", nil, function (draw_ctx)
     draw_ctx:win_separator_text("Note")
-    if options.ea_short_co then
-        draw_ctx:win_text(string.format("Infinite Ankh: On death revive and gain a %s penalty", time_to_string(SHORT_PENALTY.ANKH, true)))
-    else
-        draw_ctx:win_text(string.format("Infinite Ankh: On death revive and gain a %s penalty", time_to_string(PENALTY.ANKH, true)))
-    end
+    draw_ctx:win_text(string.format("Infinite Ankh: On death revive and gain a %s penalty", time_to_string(PENALTY.ANKH, true)))
     draw_ctx:win_text("Instant restart protection: Instant restarting will not reset the time. You can always instant restart during a race")
     draw_ctx:win_text("Olmec Ankh: Picking up the Ankh in Olmec's Lair will give you one revive without penalty and evtl. reduces the time a little")
 end)
-
---[[ Emergency bow
-register_option_callback("cc_stuck", 0, function(draw_ctx)
-    deal_ready = true
-    if state.screen ~= SCREEN.LEVEL or not options.ea_short_co or state.world == 8 or not deal_ready then
-        options.cc_stuck = 0
-        return
-    end
-    local button_count = 0
-
-    if draw_ctx:win_check("I lost bow", options.cc_stuck > 0) then
-        button_count = 1
-        if draw_ctx:win_check("I am stuck", options.cc_stuck > 1) then
-            button_count = 2
-            if draw_ctx:win_check("I need to cheat", options.cc_stuck > 2) then
-                button_count = 3
-                if draw_ctx: win_check("I TAKE ANY COST", options.cc_stuck > 3) then
-                    button_count = 4
-                end
-            end
-        end
-    end
-    if options.cc_stuck == 4 then
-        button_count = 4
-    end
-    if button_count == 4 then
-        local deal = draw_ctx:window("DEAL", deal_x, deal_y, 0, 0, false, function(ctx, pos, size)
-            deal_x = -size.x/2+(math.random()-0.5)*0.005
-            deal_y = size.y/2+(math.random()-0.5)*0.005
-            ctx:win_text("TAKE THE DEAL")
-            local choose = ctx:win_button("GET  THE  BOW")
-            ctx:win_text("LOSE   10   MIN")
-            if choose then
-                local jayjay = spawn_on_floor(ENT_TYPE.ITEM_HOUYIBOW, math.floor(0), math.floor(0), LAYER.PLAYER);
-                local armin = spawn_on_floor(ENT_TYPE.ITEM_LIGHT_ARROW, math.floor(0), math.floor(0), LAYER.PLAYER);
-                ]]
-                --get_entity(jayjay)--[[@as Bow]]:light_on_fire(60)
-                --get_entity(armin)--[[@as LightArrow]]:light_on_fire(60)
-                --[[
-                pick_up(jayjay, armin)
-                pick_up(get_player(1, false).uid, jayjay);
-
-                get_player(1, false):set_cursed(true, true)
-                ankh_respawn = false;
-
-                --state.kali_altars_destroyed = 3
-                --state.shoppie_aggro = 2
-                --state.merchant_aggro = 1
-
-                add_time(10*MIN)
-                button_count = 0;
-                deal_ready = false;
-            end
-        end)
-        if not deal then
-            button_count = 0
-        end
-    end
-    options.cc_stuck = button_count
-end)
-]]
-
---[[ stuff
--- Cutscene skip. Might enable it permanently
-register_option_bool("da_cutskip", "Cutscene skip", "Our lord and savior", true);
-
--- The highly popular ankh skip mod
-register_option_bool("db_ankhskip", "Shorter Ankh animation", "Makes your respawns 2 times shorter", true);
-
--- The other darkness remover
-register_option_bool("dc_nodark", "Vanilla dark level behavior", "Disables dark levels if you are fast enough", true);
-
---register_option_int("customaziation_omg", "Customization", "CUSTOMIZATION", 30, 0, 2147483647);
-
-register_option_bool("counter", "count deaths", "enables a visual which shows how many times you died", true)
-
-register_option_bool("a_custom", "custom position", "Be precise", false)
-register_option_float("left", "left", "", -0.985, -1, 1)
-register_option_float("top", "top", "", 0.910, -1, 1)
-register_option_float("big", "big", "", 0.05, 0, 2)
-]]
-
---[[
-exports = {
-    set_penalty = function(t_penalty)
-        --penalty = t_penalty;
-    end
-}
-]]

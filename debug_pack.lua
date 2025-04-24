@@ -1,4 +1,4 @@
--- Version 3.0.0
+-- Version 3.3.0
 -- Made by Nitroxy
 
 local debug = {
@@ -85,7 +85,7 @@ end
 
 function debug.if_change(id, value)
     local result = false
-    if prev_val[id] then
+    if prev_val[id] ~= nil then
         if prev_val[id] ~= value then
             result = true
         end
@@ -111,19 +111,29 @@ function debug.reverse_enum(enum, value)
     return nil
 end
 
+function debug.eq(val1, val2)
+    return math.abs(val1-val2) < 0.0001
+end
+
 function debug.print_on_change(id, value, output)
     if debug.active then
         if debug.if_change(id, value) then
             debug.better_print(output)
+            return true
         end
     end
+    return false
 end
 
 function debug.print_once(id, output)
-    if not debug.once[id] then
-        debug.better_print(output)
-        debug.once[id] = output
+    if debug.active then
+        if not debug.once[id] then
+            debug.better_print(output)
+            debug.once[id] = output
+            return true
+        end
     end
+    return false
 end
 
 -- TODO: Make strings be normal
@@ -131,8 +141,10 @@ function debug.print_if(check, output)
     if debug.active then
         if check then
             debug.better_print(output)
+            return true
         end
     end
+    return false
 end
 
 function debug.q.draw(id, thing)
